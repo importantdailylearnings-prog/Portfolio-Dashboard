@@ -1,0 +1,2808 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Portfolio Visualizer Dashboard – Optimiertes Portfolio (MPT)</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+  <style>
+    :root{
+      --bg:#f7f8fb;
+      --card:#ffffff;
+      --text:#111;
+      --muted:#555;
+      --divider:#eaeaea;
+      --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+      --shadow2: 0 6px 18px rgba(17, 24, 39, 0.06);
+      --radius:16px;
+
+      /* Asset colors (konsistent) */
+      --jnj:#2563eb;   /* Blau */
+      --ko:#16a34a;    /* Grün */
+      --msft:#f97316;  /* Orange */
+      --jpm:#7c3aed;   /* Lila */
+
+      /* UI accents */
+      --ui:#0ea5e9;
+      --ui2:#22c55e;
+      --ui3:#a855f7;
+      --warn:#ef4444;
+
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg) 55%, #ffffff 100%);
+      color: var(--text);
+    }
+
+    a{ color: inherit; text-decoration: none; }
+    .container{ max-width: 1280px; margin: 0 auto; padding: 22px 18px 60px; }
+
+    header.hero{
+      background: radial-gradient(1200px 700px at 10% 10%, rgba(14,165,233,0.12), transparent 55%),
+                  radial-gradient(1100px 650px at 85% 25%, rgba(34,197,94,0.10), transparent 55%),
+                  radial-gradient(900px 650px at 80% 90%, rgba(168,85,247,0.10), transparent 55%),
+                  linear-gradient(180deg, #fff, #fff);
+      border: 1px solid var(--divider);
+      border-radius: calc(var(--radius) + 4px);
+      box-shadow: var(--shadow);
+      padding: 22px 22px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-top{
+      display:flex;
+      gap:16px;
+      align-items:flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .hero-title{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(14,165,233,0.10);
+      border: 1px solid rgba(14,165,233,0.22);
+      color:#075985;
+      font-weight:700;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .hero h1{
+      margin:0;
+      font-size: 24px;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .hero-sub{
+      margin-top:6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      max-width: 720px;
+    }
+
+    .controls{
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .control{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--divider);
+      background: #fff;
+      box-shadow: var(--shadow2);
+      min-height: 42px;
+    }
+    .control label{
+      font-size: 12px;
+      color:#333;
+      font-weight:600;
+      white-space: nowrap;
+    }
+    .control input[type="date"]{
+      border: 1px solid var(--divider);
+      border-radius: 10px;
+      padding: 6px 8px;
+      font-family: inherit;
+      font-size: 12px;
+      outline:none;
+      background: #fff;
+    }
+    .control input[type="date"]:disabled{ opacity: .6; cursor:not-allowed; }
+    .control .hint{
+      font-size: 11px;
+      color:#666;
+      max-width: 220px;
+    }
+
+    .toggle{
+      display:flex; align-items:center; gap:10px;
+    }
+    .switch{
+      position:relative; width:46px; height:26px; flex: 0 0 auto;
+    }
+    .switch input{ display:none; }
+    .slider{
+      position:absolute; inset:0;
+      background:#e5e7eb;
+      border-radius: 999px;
+      border: 1px solid var(--divider);
+      transition: .2s ease;
+    }
+    .slider::after{
+      content:"";
+      position:absolute;
+      top: 3px; left: 3px;
+      width: 20px; height: 20px;
+      border-radius: 999px;
+      background:#fff;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+      transition: .2s ease;
+    }
+    .switch input:checked + .slider{
+      background: rgba(14,165,233,0.25);
+      border-color: rgba(14,165,233,0.35);
+    }
+    .switch input:checked + .slider::after{ transform: translateX(20px); }
+
+    .btn{
+      border: 1px solid var(--divider);
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-weight:700;
+      font-size: 12px;
+      cursor:pointer;
+      box-shadow: var(--shadow2);
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      transition: transform .06s ease, border-color .2s ease, background .2s ease;
+    }
+    .btn:hover{ border-color: rgba(14,165,233,0.35); background: rgba(14,165,233,0.05); }
+    .btn:active{ transform: scale(0.99); }
+
+    .upload{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(14,165,233,0.35);
+      background: rgba(14,165,233,0.04);
+      box-shadow: var(--shadow2);
+    }
+    .upload strong{ font-size: 12px; }
+    .upload small{ display:block; color:#555; font-size: 11px; max-width: 340px; }
+    .upload input[type="file"]{ font-size: 12px; }
+    .upload .drop{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px dashed rgba(34,197,94,0.40);
+      background: rgba(34,197,94,0.06);
+      color:#14532d;
+      font-weight:700;
+      font-size: 12px;
+      cursor: pointer;
+      user-select:none;
+    }
+    .upload.dragover{
+      border-color: rgba(34,197,94,0.65);
+      background: rgba(34,197,94,0.08);
+    }
+
+    .kpi-grid{
+      margin-top: 16px;
+      display:grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 1200px){
+      .kpi-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px){
+      .kpi-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .controls{ justify-content:flex-start; }
+    }
+
+    .kpi{
+      background: var(--card);
+      border: 1px solid var(--divider);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow2);
+      padding: 12px 12px;
+      min-height: 86px;
+      display:flex;
+      gap: 12px;
+      align-items:flex-start;
+    }
+    .kpi .icon{
+      width: 36px; height: 36px;
+      border-radius: 12px;
+      background: rgba(14,165,233,0.10);
+      border: 1px solid rgba(14,165,233,0.22);
+      display:flex; align-items:center; justify-content:center;
+      flex: 0 0 auto;
+    }
+    .kpi .meta{ flex: 1; min-width: 0; }
+    .kpi .label{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size: 12px;
+      color:#333;
+      font-weight:700;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .kpi .value{
+      margin-top: 6px;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .kpi .sub{
+      margin-top: 4px;
+      font-size: 11px;
+      color:#666;
+      line-height: 1.25;
+    }
+    .tip{
+      width: 18px; height: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(17,24,39,0.15);
+      display:inline-flex;
+      align-items:center; justify-content:center;
+      font-size: 11px;
+      color:#111;
+      cursor: help;
+      background: #fff;
+      flex: 0 0 auto;
+    }
+
+    main{ margin-top: 16px; display:flex; flex-direction: column; gap: 14px; }
+
+    .section{
+      background: var(--card);
+      border: 1px solid var(--divider);
+      border-radius: calc(var(--radius) + 2px);
+      box-shadow: var(--shadow);
+      padding: 16px 16px 14px;
+    }
+    .section h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+    .section p.desc{
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      max-width: 980px;
+    }
+
+    .grid-2{
+      margin-top: 12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 920px){
+      .grid-2{ grid-template-columns: 1fr; }
+    }
+
+    .grid-3{
+      margin-top: 12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 1100px){
+      .grid-3{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border: 1px solid var(--divider);
+      border-radius: var(--radius);
+      background: #fff;
+      box-shadow: var(--shadow2);
+      padding: 12px 12px 10px;
+      min-height: 320px;
+      position: relative;
+      overflow:hidden;
+    }
+    .card h3{
+      margin: 0 0 6px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .card .note{
+      margin: 0 0 10px;
+      font-size: 12px;
+      color:#666;
+      line-height: 1.35;
+    }
+    .chart{ width:100%; min-height: 250px; }
+    .chart.tall{ min-height: 320px; }
+    .chart.xl{ min-height: 380px; }
+    .chart.heat{ min-height: 340px; }
+
+    .divider{ height:1px; background: var(--divider); margin: 10px 0; }
+
+    .table{
+      width:100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+    .table th, .table td{
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--divider);
+      vertical-align: middle;
+      text-align:left;
+    }
+    .table th{
+      color:#333;
+      font-weight: 800;
+      background: linear-gradient(180deg, rgba(17,24,39,0.03), transparent);
+    }
+    .bar{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(17,24,39,0.06);
+      border: 1px solid rgba(17,24,39,0.08);
+      overflow: hidden;
+      width: 180px;
+    }
+    .bar > span{
+      display:block;
+      height: 100%;
+      border-radius: 999px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--divider);
+      background: rgba(17,24,39,0.03);
+      font-weight: 800;
+      font-size: 11px;
+      color:#111;
+      white-space: nowrap;
+    }
+    .legend-dots{
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .dot{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size: 12px;
+      color:#333;
+      font-weight: 700;
+    }
+    .dot i{
+      width: 10px; height: 10px;
+      border-radius: 999px;
+      display:inline-block;
+    }
+
+    details.mini{
+      margin-top: 10px;
+      border: 1px dashed rgba(17,24,39,0.14);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(17,24,39,0.02);
+    }
+    details.mini summary{
+      cursor:pointer;
+      font-weight: 800;
+      color:#111;
+      font-size: 12px;
+      list-style:none;
+      outline:none;
+    }
+    details.mini p{
+      margin: 8px 0 0;
+      color:#444;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .statusline{
+      margin-top: 10px;
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+      justify-content: space-between;
+    }
+    .status{
+      font-family: var(--mono);
+      font-size: 11px;
+      color:#111;
+      background: rgba(17,24,39,0.04);
+      border: 1px solid rgba(17,24,39,0.08);
+      border-radius: 12px;
+      padding: 8px 10px;
+      display:inline-flex;
+      gap: 10px;
+      align-items:center;
+    }
+    .status b{ font-family: inherit; }
+
+    .warn{
+      color: #7f1d1d;
+      background: rgba(239,68,68,0.08);
+      border-color: rgba(239,68,68,0.18);
+    }
+
+    .mini-right{
+      display:flex; gap:10px; align-items:center; flex-wrap: wrap; justify-content:flex-end;
+    }
+
+    /* Monthly heatmap table */
+    .heatmap-wrap{
+      overflow:auto;
+      border: 1px solid var(--divider);
+      border-radius: var(--radius);
+      padding: 10px;
+      box-shadow: var(--shadow2);
+      background: #fff;
+    }
+    .heatmap{
+      border-collapse: collapse;
+      font-size: 11px;
+      min-width: 760px;
+      width: 100%;
+    }
+    .heatmap th, .heatmap td{
+      border-bottom: 1px solid var(--divider);
+      padding: 8px 8px;
+      text-align:center;
+      white-space: nowrap;
+    }
+    .heatmap th{
+      font-weight: 900;
+      color:#333;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 2;
+    }
+    .heatmap .y{
+      text-align:left;
+      font-weight: 900;
+      position: sticky;
+      left: 0;
+      background:#fff;
+      z-index: 1;
+    }
+    .cell{
+      border-radius: 10px;
+      padding: 6px 8px;
+      font-weight: 800;
+      display:inline-block;
+      min-width: 62px;
+    }
+
+    /* Apex tooltip polish */
+    .apexcharts-tooltip{
+      box-shadow: var(--shadow) !important;
+      border: 1px solid rgba(17,24,39,0.10) !important;
+      border-radius: 14px !important;
+    }
+
+    footer{
+      margin-top: 16px;
+      color:#555;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align:center;
+    }
+    .muted{ color:#666; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-title">
+            <div class="badge">
+              <span style="display:inline-flex;width:10px;height:10px;border-radius:999px;background:linear-gradient(135deg,var(--ui),var(--ui2));"></span>
+              Rein frontend berechnet (kein Backend)
+            </div>
+          </div>
+          <h1>Optimiertes Portfolio (MPT) – Portfolio Visualizer Dashboard</h1>
+          <div class="hero-sub">
+            Diese Seite berechnet alle Kennzahlen und Visualisierungen lokal im Browser (Preisreihen → Returns → Metriken → Optimierung/Monte-Carlo).
+            Alle Achsen, Labels und Tooltips sind auf Deutsch; Zahlenformat ist <span class="pill">de-DE</span>.
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="control toggle" title="Schaltet zusätzliche Asset-Linien ein/aus. Charts bleiben sichtbar; es wird nur die Darstellung erweitert.">
+            <label>Portfolio vs. Assets</label>
+            <div class="switch">
+              <input id="toggleAssets" type="checkbox" checked />
+              <span class="slider"></span>
+            </div>
+          </div>
+
+          <div class="control toggle" title="Zeigt zusätzlich ein Gleichgewichtet-Portfolio (25% je Asset) als Vergleichslinie. Charts bleiben sichtbar.">
+            <label>Gleichgewichtet</label>
+            <div class="switch">
+              <input id="toggleEqual" type="checkbox" checked />
+              <span class="slider"></span>
+            </div>
+          </div>
+
+          <div class="control" title="Risikofreier Zinssatz (rf) beeinflusst die Sharpe Ratio. Standard: 0%.">
+            <label>rf</label>
+            <input id="rfInput" type="number" step="0.1" min="0" max="10" value="0" style="width:74px;border-radius:10px;border:1px solid var(--divider);padding:6px 8px;font-size:12px;" />
+            <span class="hint">%</span>
+          </div>
+
+          <div class="control" title="Zeitraumfilter (aktiv, wenn ausreichend Daten vorhanden). Charts bleiben sichtbar; es wird nur neu berechnet.">
+            <label>Zeitraum</label>
+            <input id="dateFrom" type="date" />
+            <span class="muted" style="font-size:12px;">bis</span>
+            <input id="dateTo" type="date" />
+          </div>
+
+          <button class="btn" id="btnReset" title="Setzt Filter/Schalter zurück und lädt Demo-Daten (falls keine CSV geladen ist).">
+            ⟲ Zurücksetzen
+          </button>
+        </div>
+      </div>
+
+      <div class="statusline">
+        <div class="upload" id="uploadBox">
+          <div>
+            <strong>CSV laden (optional)</strong>
+            <small>Erwartet Spalten: <b>Date</b>, <b>JNJ</b>, <b>KO</b>, <b>MSFT</b>, <b>JPM</b> (Preise). Demo-Daten sind sofort verfügbar.</small>
+          </div>
+          <div class="drop" id="dropZone">Drag &amp; Drop</div>
+          <input id="fileInput" type="file" accept=".csv,text/csv" />
+        </div>
+
+        <div class="mini-right">
+          <div class="status" id="dataStatus"><b>Daten:</b> Demo-Daten aktiv · <span id="dataSpan"></span></div>
+          <div class="status" id="mcStatus"><b>Monte-Carlo:</b> <span id="mcSpan">bereit</span></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPI Tiles -->
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="icon" title="CAGR = annualisierte Wachstumsrate (Compound Annual Growth Rate).">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 19V5" stroke="#075985" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 19H20" stroke="#075985" stroke-width="2" stroke-linecap="round"/>
+            <path d="M7 14l3-3 3 2 5-6" stroke="#075985" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="label">CAGR <span class="tip" title="Annualisierte Wachstumsrate des Portfolios im ausgewählten Zeitraum.">i</span></div>
+          <div class="value" id="kpiCagr">–</div>
+          <div class="sub">Langfristige Rendite pro Jahr (komponiert).</div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="icon" title="Volatilität = annualisierte Standardabweichung der täglichen Returns.">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 12h4l2 6 3-12 3 12 2-6h4" stroke="#075985" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="label">Volatilität <span class="tip" title="Annualisierte Schwankungsbreite der Portfolio-Returns.">i</span></div>
+          <div class="value" id="kpiVol">–</div>
+          <div class="sub">Gesamtrisiko (Streuung) der Renditen.</div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="icon" title="Sharpe Ratio = (Rendite - rf) / Volatilität.">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3v18" stroke="#075985" stroke-width="2" stroke-linecap="round"/>
+            <path d="M7 7h10M7 17h10" stroke="#075985" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 12h8" stroke="#075985" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="label">Sharpe Ratio <span class="tip" title="Rendite pro Risikoeinheit (über rf). Höher ist besser.">i</span></div>
+          <div class="value" id="kpiSharpe">–</div>
+          <div class="sub">Risk-adjustierte Performance.</div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="icon" title="Max Drawdown = größter prozentualer Rückgang vom Peak zum Tief.">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 7h6l2 3 2-5 2 9 2-4h4" stroke="#075985" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 19h16" stroke="#075985" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="label">Max. Drawdown <span class="tip" title="Worst-Case Einbruch im Zeitraum. Diversifikation kann Drawdowns reduzieren.">i</span></div>
+          <div class="value" id="kpiMdd">–</div>
+          <div class="sub">Kapitalrückgang in Stressphasen.</div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="icon" title="Downside Deviation betrachtet nur negative Abweichungen (Downside Risk).">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 5v14h16" stroke="#075985" stroke-width="2" stroke-linecap="round"/>
+            <path d="M7 10l3 3 3-4 4 5" stroke="#075985" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="label">Downside Dev. <span class="tip" title="Downside Deviation: Risiko gemessen nur bei negativen Returns (unter 0%).">i</span></div>
+          <div class="value" id="kpiDown">–</div>
+          <div class="sub">Abwärtsrisiko statt Gesamtschwankung.</div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="icon" title="VaR = historischer Value-at-Risk (1 Tag).">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" stroke="#075985" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M12 8v5" stroke="#075985" stroke-width="2" stroke-linecap="round"/>
+            <path d="M12 17h.01" stroke="#075985" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="label">VaR 95% (1T) <span class="tip" title="Historischer Value-at-Risk: Verlustschwelle, die an 95% der Tage nicht überschritten wurde.">i</span></div>
+          <div class="value" id="kpiVar">–</div>
+          <div class="sub">Quantifiziert seltene, aber plausible Tagesverluste.</div>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <!-- A) Allocation -->
+      <section class="section" id="secAllocation">
+        <h2>A) Portfolio-Allokation</h2>
+        <p class="desc">
+          Diese Sektion zeigt die optimierten Portfolio-Gewichte (Modern Portfolio Theory). Die Gewichte bestimmen, wie stark jedes Asset zur Rendite und zum Risiko beiträgt.
+          Eine stark ungleiche Gewichtung kann rational sein, wenn bestimmte Assets ein günstiges Risiko-Rendite-Profil und Diversifikationseffekte liefern.
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Gewichte (Donut)</h3>
+            <p class="note">
+              Was zeigt das? Die prozentuale Verteilung des Kapitals auf JNJ, KO, MSFT und JPM.
+              Wie interpretieren? Dominante Gewichte deuten auf robuste, diversifizierende Treiber im Optimierungsziel hin.
+              Warum relevant? Allokationen sind der zentrale Output jeder MPT-Optimierung.
+            </p>
+            <div id="chAllocDonut" class="chart tall"></div>
+            <div class="legend-dots">
+              <span class="dot"><i style="background:var(--jnj)"></i> JNJ</span>
+              <span class="dot"><i style="background:var(--ko)"></i> KO</span>
+              <span class="dot"><i style="background:var(--msft)"></i> MSFT</span>
+              <span class="dot"><i style="background:var(--jpm)"></i> JPM</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Gewichte (Horizontal, sortiert)</h3>
+            <p class="note">
+              Was zeigt das? Dieselben Gewichte als sortierte Balken für bessere Vergleichbarkeit.
+              Wie interpretieren? Große Unterschiede verdeutlichen, welche Assets die Optimierung priorisiert.
+              Warum relevant? Die Visualisierung unterstützt die akademische Diskussion von Konzentrationsrisiken.
+            </p>
+            <div id="chAllocBars" class="chart tall"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px; min-height:unset;">
+          <h3>Gewichtstabelle (mit Farbbalken & Kommentar)</h3>
+          <p class="note">
+            Was zeigt das? Tabellarische Darstellung für präzise, zitierfähige Werte.
+            Wie interpretieren? Kommentare geben eine plausible, datengetriebene Einordnung der Gewichtshöhe.
+            Warum relevant? Tabellen sind in akademischen Berichten üblich und unterstützen Reproduzierbarkeit.
+          </p>
+          <table class="table" id="tblWeights"></table>
+
+          <details class="mini" open>
+            <summary>Akademische Einordnung (kurz)</summary>
+            <p>
+              Ein höheres Gewicht in defensiven / stabilen Titeln kann plausibel sein, wenn diese im betrachteten Zeitraum
+              eine günstige Kombination aus Rendite, Volatilität und Korrelation bieten. Ein nahezu null Gewicht (z. B. JPM)
+              kann entstehen, wenn das Asset im Optimierungsziel keine zusätzliche Diversifikationsprämie liefert oder das Risiko-Rendite-Profil
+              durch andere Kombinationen effizienter erreicht wird.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <!-- B) Performance Analysis -->
+      <section class="section" id="secPerformance">
+        <h2>B) Performance-Analyse (PortfolioVisualizer-Stil)</h2>
+        <p class="desc">
+          Diese Sektion stellt die Performance als Zeitreihe, Wachstumsverlauf (Growth of Wealth), Jahresrenditen und Rolling-Metriken dar.
+          Die Kombination mehrerer Blickwinkel ist relevant, weil identische Endrenditen unterschiedliche Pfade (Drawdowns, Volatilität, Regime) besitzen können.
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Kumulierte Rendite (Portfolio vs. Assets)</h3>
+            <p class="note">
+              Was zeigt das? Kumulierte Rendite ab Startdatum.
+              Wie interpretieren? Abstände zwischen Linien spiegeln relative Über-/Unterperformance.
+              Warum relevant? Zeitliche Dominanz ist zentral für Benchmarking und Robustheitsprüfung.
+            </p>
+            <div id="chCumReturn" class="chart xl"></div>
+          </div>
+
+          <div class="card">
+            <h3>Growth of Wealth (10.000 € Startkapital)</h3>
+            <p class="note">
+              Was zeigt das? Vermögensentwicklung eines Startkapitals unter Reinvestition.
+              Wie interpretieren? Unterschiedliche Steigungen zeigen Renditeregime; Einbrüche zeigen Stressphasen.
+              Warum relevant? Intuitive Darstellung für den Gesamtnutzen einer Strategie.
+            </p>
+            <div id="chWealth" class="chart xl"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Jährliche Renditen (Portfolio + Assets)</h3>
+            <p class="note">
+              Was zeigt das? Jahresrenditen als gruppierte Balken.
+              Wie interpretieren? Gleichlauf deutet auf hohe Korrelation; Ausreißerjahre zeigen Diversifikationsnutzen.
+              Warum relevant? Jahresaggregation reduziert Rauschen und macht Regime sichtbar.
+            </p>
+            <div id="chAnnual" class="chart xl"></div>
+          </div>
+
+          <div class="card">
+            <h3>Rolling Returns (3 Jahre & 5 Jahre)</h3>
+            <p class="note">
+              Was zeigt das? Rolling-Periodenrenditen (3J und 5J) über Zeit.
+              Wie interpretieren? Positive und stabile Rolling Returns sprechen für Robustheit.
+              Warum relevant? Rolling-Metriken sind Standard in akademischen Backtests.
+            </p>
+            <div id="chRollingRet3" class="chart"></div>
+            <div class="divider"></div>
+            <div id="chRollingRet5" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Rolling Volatilität (63T & 252T)</h3>
+            <p class="note">
+              Was zeigt das? Kurz- und langfristige Risikodynamik (annualisiert).
+              Wie interpretieren? Spikes sind Stressindikatoren; sinkende Vol signalisiert Stabilisierung.
+              Warum relevant? Risiko ist zeitvariabel – Optimierung sollte Regime berücksichtigen.
+            </p>
+            <div id="chRollVol" class="chart xl"></div>
+          </div>
+
+          <div class="card">
+            <h3>Drawdown (Portfolio und optional Assets)</h3>
+            <p class="note">
+              Was zeigt das? Prozentualer Rückgang vom bisherigen Höchststand.
+              Wie interpretieren? Tiefe und Dauer sind kritische Risikodimensionen jenseits der Volatilität.
+              Warum relevant? Max Drawdown und Recovery-Zeit sind zentrale Investor*innen-Kriterien.
+            </p>
+            <div id="chDrawdown" class="chart xl"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Renditeverteilung (Histogramm, Portfolio)</h3>
+            <p class="note">
+              Was zeigt das? Verteilung täglicher Portfolio-Returns.
+              Wie interpretieren? Asymmetrien/Fat Tails weisen auf nicht-normalverteilte Risiken hin.
+              Warum relevant? Risikoabschätzungen (z. B. VaR) hängen von der Verteilungsform ab.
+            </p>
+            <div id="chHist" class="chart xl"></div>
+          </div>
+
+          <div class="card">
+            <h3>Monatsrenditen-Heatmap (Portfolio)</h3>
+            <p class="note">
+              Was zeigt das? Monatsrenditen nach Jahr/Monat.
+              Wie interpretieren? Muster (Saisonalität/Regime) werden als Heatmap visuell deutlich.
+              Warum relevant? Ergänzt Jahres- und Tagesperspektive um mittlere Zeitskalen.
+            </p>
+            <div class="heatmap-wrap">
+              <div id="monthlyHeatmap"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- C) Risk Analysis -->
+      <section class="section" id="secRisk">
+        <h2>C) Risiko-Analyse</h2>
+        <p class="desc">
+          Diese Sektion trennt Gesamtrisiko (Volatilität) von Abwärtsrisiken (Downside Deviation, Drawdowns) und ergänzt quantilebasierte Kennzahlen (VaR).
+          Diversifikation kann Risiko senken, wenn Assets nicht perfekt korreliert sind.
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Volatilität pro Asset (annualisiert)</h3>
+            <p class="note">
+              Was zeigt das? Annualisierte Schwankungsbreite je Asset.
+              Wie interpretieren? Höhere Volatilität bedeutet stärkere Ausschläge, aber nicht zwingend schlechtere Performance.
+              Warum relevant? MPT nutzt Varianz/Kovarianz als Risikomaß.
+            </p>
+            <div id="chVolAssets" class="chart xl"></div>
+          </div>
+
+          <div class="card">
+            <h3>Portfolio vs. Durchschnitt Asset-Volatilität</h3>
+            <p class="note">
+              Was zeigt das? Vergleich der Portfolio-Volatilität gegen den Mittelwert der Einzelrisiken.
+              Wie interpretieren? Liegt das Portfolio darunter, spricht das für Diversifikationseffekte.
+              Warum relevant? Diversifikation ist ein Kernargument der Portfoliotheorie.
+            </p>
+            <div id="chVolCompare" class="chart xl"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Max Drawdown (Assets & Portfolio)</h3>
+            <p class="note">
+              Was zeigt das? Maximaler Peak-to-Trough Rückgang je Serie.
+              Wie interpretieren? Niedrigere Drawdowns bedeuten weniger Verlusttiefe in Krisen.
+              Warum relevant? Drawdowns sind für Risikoakzeptanz und Kapitalbedarf entscheidend.
+            </p>
+            <div id="chMddBars" class="chart xl"></div>
+          </div>
+
+          <div class="card">
+            <h3>Downside Deviation & VaR (95% / 99%)</h3>
+            <p class="note">
+              Was zeigt das? Downside Risk sowie quantilebasierte Verlustschwellen.
+              Wie interpretieren? Downside Risk fokussiert negative Abweichungen; VaR quantifiziert seltene Verluste.
+              Warum relevant? Ergänzt Volatilität um asymmetrische Risikoaspekte.
+            </p>
+            <div id="chDownVar" class="chart xl"></div>
+          </div>
+        </div>
+
+        <details class="mini">
+          <summary>Erklärung: Volatilität vs. Downside Risk</summary>
+          <p>
+            Volatilität misst Schwankungen in beide Richtungen (positiv und negativ), während Downside Deviation nur die negative Seite betrachtet.
+            In der Portfolio-Optimierung kann ein Portfolio mit ähnlicher Volatilität, aber geringerem Downside Risk für risikosensitive Zielsetzungen vorzuziehen sein.
+          </p>
+        </details>
+      </section>
+
+      <!-- D) Correlation & Diversification -->
+      <section class="section" id="secCorr">
+        <h2>D) Korrelation & Diversifikation</h2>
+        <p class="desc">
+          Korrelationen bestimmen, wie stark sich Assets gemeinsam bewegen. Niedrigere Korrelationen erhöhen typischerweise den Diversifikationsnutzen,
+          da Verluste eines Assets teilweise durch stabilere oder gegenläufige Bewegungen anderer Assets kompensiert werden können.
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Korrelations-Heatmap (4×4)</h3>
+            <p class="note">
+              Was zeigt das? Paarweise Korrelationen der täglichen Returns.
+              Wie interpretieren? Werte nahe +1 bedeuten starken Gleichlauf; nahe 0 bedeutet geringe lineare Beziehung.
+              Warum relevant? Kovarianzen (Korrelation × Volatilitäten) sind Input der MPT.
+            </p>
+            <div id="chCorrHeat" class="chart heat"></div>
+          </div>
+
+          <div class="card">
+            <h3>Scatterplots (Diversifikationsintuition)</h3>
+            <p class="note">
+              Was zeigt das? Punktwolken der täglichen Returns zweier Assets.
+              Wie interpretieren? Breitere, weniger diagonale Wolken deuten auf geringere Korrelation hin.
+              Warum relevant? Visuelle Validierung ergänzt die numerische Korrelation.
+            </p>
+            <div class="grid-3" style="margin-top:0;">
+              <div class="card" style="min-height:260px; padding:10px;">
+                <h3 style="margin-bottom:6px;">JNJ vs KO</h3>
+                <div id="chSc1" class="chart" style="min-height:210px;"></div>
+              </div>
+              <div class="card" style="min-height:260px; padding:10px;">
+                <h3 style="margin-bottom:6px;">JNJ vs MSFT</h3>
+                <div id="chSc2" class="chart" style="min-height:210px;"></div>
+              </div>
+              <div class="card" style="min-height:260px; padding:10px;">
+                <h3 style="margin-bottom:6px;">KO vs MSFT</h3>
+                <div id="chSc3" class="chart" style="min-height:210px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px; min-height:unset;">
+          <h3>Average Correlation (KPI-Interpretation)</h3>
+          <p class="note">
+            Was zeigt das? Durchschnittliche Off-Diagonal-Korrelation der vier Assets.
+            Wie interpretieren? Niedrigere Werte deuten auf höheren Diversifikationsnutzen hin.
+            Warum relevant? Ein kompakter Indikator für Diversifikationsqualität.
+          </p>
+          <div class="status" style="width:fit-content;">
+            <b>Ø-Korrelation:</b> <span id="avgCorr">–</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- E) Efficient Frontier -->
+      <section class="section" id="secFrontier">
+        <h2>E) Effiziente Grenze (Monte-Carlo ≥ 10.000 Portfolios)</h2>
+        <p class="desc">
+          Die effiziente Grenze visualisiert die besten erreichbaren Risiko-Rendite-Kombinationen. Durch Monte-Carlo werden viele Portfolios (zufällige Gewichte) simuliert,
+          anschließend werden Rendite, Volatilität und Sharpe Ratio berechnet. Markiert werden das optimierte Portfolio sowie Extrempunkte (Minimum-Varianz, Maximum-Sharpe).
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Monte-Carlo Streudiagramm (Rendite vs. Risiko)</h3>
+            <p class="note">
+              Was zeigt das? Jedes Punkt ist ein simuliertes Portfolio (≥ 10.000).
+              Wie interpretieren? Höher (Rendite) und weiter links (geringeres Risiko) ist effizienter; Farbe kodiert Sharpe Ratio.
+              Warum relevant? Standarddarstellung zur akademischen Validierung von MPT-Optimierungen.
+            </p>
+            <div id="chFrontier" class="chart xl"></div>
+            <div class="status" style="margin-top:10px;">
+              <b>Markierungen:</b>
+              <span class="pill">Optimiert</span>
+              <span class="pill">Min-Varianz</span>
+              <span class="pill">Max-Sharpe</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Highlights (Rendite / Volatilität / Sharpe)</h3>
+            <p class="note">
+              Was zeigt das? Zusammenfassung der drei wichtigsten Portfolios.
+              Wie interpretieren? Max-Sharpe ist oft akademisch sinnvoll, da er risk-adjustierte Performance maximiert.
+              Warum relevant? Tabellarisch zitierbare Kennzahlen für Bericht/Präsentation.
+            </p>
+            <table class="table" id="tblFrontierHighlights"></table>
+
+            <details class="mini" open>
+              <summary>Erklärung: Effiziente Grenze & Max-Sharpe</summary>
+              <p>
+                Die effiziente Grenze umfasst Portfolios, die für ein gegebenes Risiko die höchste erwartete Rendite liefern (oder umgekehrt).
+                Das Maximum-Sharpe-Portfolio maximiert die Sharpe Ratio und liefert damit eine risk-adjustierte Optimallösung unter den betrachteten Annahmen.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- F) Vergleich & Attribution -->
+      <section class="section" id="secCompare">
+        <h2>F) Vergleich & Attribution (Optimiert vs. Gleichgewichtet)</h2>
+        <p class="desc">
+          Diese Sektion vergleicht das optimierte Portfolio mit einem einfachen Gleichgewichtet-Portfolio (25% je Asset).
+          Zusätzlich werden Rendite- und Risikobeiträge je Asset visualisiert, um die Wirkung der Gewichtung zu erklären.
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Kumulierte Rendite: Optimiert vs. Gleichgewichtet</h3>
+            <p class="note">
+              Was zeigt das? Zwei Portfolio-Linien (optimiert und gleichgewichtet).
+              Wie interpretieren? Überperformance kann durch bessere Diversifikation oder besseres Risiko-Rendite-Profil entstehen.
+              Warum relevant? Vergleich gegen naive Baseline ist akademischer Standard.
+            </p>
+            <div id="chCompareCum" class="chart xl"></div>
+          </div>
+
+          <div class="card">
+            <h3>Drawdown: Optimiert vs. Gleichgewichtet</h3>
+            <p class="note">
+              Was zeigt das? Drawdowns beider Portfolio-Varianten.
+              Wie interpretieren? Ein geringerer Drawdown kann wichtiger sein als eine leichte Renditedifferenz.
+              Warum relevant? Validiert, ob Optimierung Risiko tatsächlich reduziert.
+            </p>
+            <div id="chCompareDD" class="chart xl"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Return Contribution je Asset (Approx.)</h3>
+            <p class="note">
+              Was zeigt das? Beitrag der Assets zur durchschnittlichen Portfolio-Rendite (Gewicht × Ø-Return).
+              Wie interpretieren? Hohe Gewichte + hohe Ø-Returns dominieren den Renditebeitrag.
+              Warum relevant? Attribution erklärt, warum ein Portfolio so performt, wie es performt.
+            </p>
+            <div id="chRetContrib" class="chart xl"></div>
+          </div>
+
+          <div class="card">
+            <h3>Risk Contribution je Asset (Marginal, Approx.)</h3>
+            <p class="note">
+              Was zeigt das? Anteil der Assets am Portfolio-Risiko (auf Basis Kovarianzstruktur).
+              Wie interpretieren? Ein Asset kann trotz kleinem Gewicht viel Risiko beitragen, wenn es hoch volatil/korreliert ist.
+              Warum relevant? Risikobeiträge helfen, Konzentrations- und Klumpenrisiken zu identifizieren.
+            </p>
+            <div id="chRiskContrib" class="chart xl"></div>
+          </div>
+        </div>
+
+        <details class="mini">
+          <summary>Hinweis: Rebalancing</summary>
+          <p>
+            In dieser reinen Frontend-Demo wird die Performance auf Basis täglicher Returns berechnet. Ein explizites Rebalancing (monatlich/jährlich) ist als Erweiterung möglich,
+            indem periodisch auf Zielgewichte zurückgesetzt wird. Für den akademischen Vergleich reicht häufig die Standardannahme einer täglichen Gewichtskonstanz im Return-Space.
+          </p>
+        </details>
+      </section>
+
+      <footer>
+        <div>
+          <b>Hinweis:</b> Diese Datei funktioniert lokal im Browser. Wenn CSV-Daten fehlen oder fehlerhaft sind, werden automatisch Demo-Daten verwendet und ein Hinweis angezeigt.
+        </div>
+        <div class="muted" style="margin-top:6px;">Assets: JNJ (Blau), KO (Grün), MSFT (Orange), JPM (Lila) · Charts: ApexCharts · Parsing: PapaParse</div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // ============================================================
+    // ===================== DATA ================================
+    // ============================================================
+
+    const ASSETS = ["JNJ","KO","MSFT","JPM"];
+    const ASSET_COLORS = {
+      JNJ: getCss("--jnj"),
+      KO: getCss("--ko"),
+      MSFT: getCss("--msft"),
+      JPM: getCss("--jpm"),
+      PORTFOLIO: "#111111",
+      EQUAL: "#64748b"
+    };
+
+    // Optimierte Gewichte (prominent, fix gemäß Vorgabe)
+    const WEIGHTS_OPT = { JNJ: 0.525, KO: 0.373, MSFT: 0.099, JPM: 0.004 };
+    const WEIGHTS_EQ  = { JNJ: 0.25,  KO: 0.25,  MSFT: 0.25,  JPM: 0.25  };
+
+    // Global state (eine Datei, lokal, ohne Backend)
+    const state = {
+      source: "demo",
+      dates: [],
+      prices: {},   // { JNJ: [..], KO:[..], ... }
+      returns: {},  // daily returns per asset
+      rf: 0.0,      // annual percent in decimal (0.0 = 0%)
+      view: {
+        showAssets: true,
+        showEqual: true,
+        from: null,
+        to: null
+      },
+      charts: new Map(),
+      mc: { points: [], highlights: null, running: false }
+    };
+
+    // ============================================================
+    // ===================== UI HELPERS ===========================
+    // ============================================================
+
+    function getCss(varName){
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    }
+    const fmtPct = (x, d=2) => new Intl.NumberFormat("de-DE", { style:"percent", minimumFractionDigits:d, maximumFractionDigits:d }).format(x);
+    const fmtNum = (x, d=2) => new Intl.NumberFormat("de-DE", { minimumFractionDigits:d, maximumFractionDigits:d }).format(x);
+    const fmtCur = (x) => new Intl.NumberFormat("de-DE", { style:"currency", currency:"EUR", maximumFractionDigits:0 }).format(x);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    function setStatus(el, html, isWarn=false){
+      el.classList.toggle("warn", !!isWarn);
+      el.innerHTML = html;
+    }
+
+    function parseDateISO(s){
+      // expects YYYY-MM-DD or Date object stringable
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function toISODate(d){
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,"0");
+      const day = String(d.getDate()).padStart(2,"0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function ensureArrayLen(arr, n){
+      if (!arr || arr.length < n) return false;
+      for (let i=0;i<n;i++) if (!isFinite(arr[i])) return false;
+      return true;
+    }
+
+    function safeDestroyChart(id){
+      const ch = state.charts.get(id);
+      if (ch){ try{ ch.destroy(); } catch(e){} }
+      state.charts.delete(id);
+    }
+
+    function mountChart(id, options){
+      safeDestroyChart(id);
+      const el = document.querySelector(id);
+      if (!el) return null;
+      const ch = new ApexCharts(el, options);
+      ch.render();
+      state.charts.set(id, ch);
+      return ch;
+    }
+
+    function apexBase(){
+      return {
+        chart: {
+          fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          toolbar: { show: true },
+          animations: { enabled: true }
+        },
+        grid: { borderColor: "rgba(17,24,39,0.10)" },
+        stroke: { width: 2, curve: "straight" },
+        dataLabels: { enabled: false },
+        legend: { position: "top", horizontalAlign: "left" },
+        tooltip: {
+          shared: true,
+          x: { formatter: (v) => v ? new Date(v).toLocaleDateString("de-DE") : "" }
+        },
+        xaxis: {
+          type: "datetime",
+          labels: { datetimeUTC: false }
+        }
+      };
+    }
+
+    // ============================================================
+    // ===================== METRICS ==============================
+    // ============================================================
+
+    function calcDailyReturnsFromPrices(prices){
+      // r_t = p_t / p_{t-1} - 1; length = prices.length-1
+      const r = new Array(Math.max(0, prices.length-1));
+      for (let i=1;i<prices.length;i++){
+        const prev = prices[i-1];
+        const curr = prices[i];
+        r[i-1] = (curr / prev) - 1;
+      }
+      return r;
+    }
+
+    function sliceByDateRange(dates, seriesDict, fromDate, toDate){
+      // dates: array of Date for prices (same length as prices)
+      // returns arrays aligned to prices; for returns derived series, will handle separately outside
+      let i0 = 0, i1 = dates.length - 1;
+      if (fromDate){
+        while (i0 < dates.length && dates[i0] < fromDate) i0++;
+      }
+      if (toDate){
+        while (i1 >= 0 && dates[i1] > toDate) i1--;
+      }
+      i0 = clamp(i0, 0, dates.length-1);
+      i1 = clamp(i1, i0, dates.length-1);
+
+      const outDates = dates.slice(i0, i1+1);
+      const outSeries = {};
+      for (const k of Object.keys(seriesDict)){
+        outSeries[k] = seriesDict[k].slice(i0, i1+1);
+      }
+      return { dates: outDates, series: outSeries };
+    }
+
+    function portfolioReturns(assetReturns, weights){
+      // assetReturns: {ASSET: [r0..r_{n-1}]}
+      const n = assetReturns[ASSETS[0]].length;
+      const pr = new Array(n).fill(0);
+      for (let i=0;i<n;i++){
+        let s = 0;
+        for (const a of ASSETS) s += (weights[a] ?? 0) * assetReturns[a][i];
+        pr[i] = s;
+      }
+      return pr;
+    }
+
+    function cumulativeFromReturns(returns){
+      const out = new Array(returns.length);
+      let v = 1;
+      for (let i=0;i<returns.length;i++){
+        v *= (1 + returns[i]);
+        out[i] = v - 1;
+      }
+      return out;
+    }
+
+    function wealthFromReturns(returns, initial=10000){
+      const out = new Array(returns.length);
+      let v = initial;
+      for (let i=0;i<returns.length;i++){
+        v *= (1 + returns[i]);
+        out[i] = v;
+      }
+      return out;
+    }
+
+    function drawdownSeries(returns){
+      // compute wealth index and drawdown relative to running max
+      const dd = new Array(returns.length);
+      let wealth = 1;
+      let peak = 1;
+      for (let i=0;i<returns.length;i++){
+        wealth *= (1 + returns[i]);
+        if (wealth > peak) peak = wealth;
+        dd[i] = (wealth / peak) - 1; // negative or 0
+      }
+      return dd;
+    }
+
+    function mean(arr){
+      if (!arr.length) return 0;
+      let s=0; for (const x of arr) s += x;
+      return s / arr.length;
+    }
+
+    function std(arr){
+      if (arr.length < 2) return 0;
+      const m = mean(arr);
+      let s2=0;
+      for (const x of arr){ const d = x - m; s2 += d*d; }
+      return Math.sqrt(s2 / (arr.length - 1));
+    }
+
+    function downsideDeviation(arr, target=0){
+      // downside deviation relative to target; uses only negative deviations
+      if (arr.length < 2) return 0;
+      let s2=0, c=0;
+      for (const x of arr){
+        const d = x - target;
+        if (d < 0){ s2 += d*d; c++; }
+      }
+      if (c < 2) return 0;
+      return Math.sqrt(s2 / (c - 1));
+    }
+
+    function quantile(arr, q){
+      // q in [0,1], linear interpolation
+      if (!arr.length) return 0;
+      const s = [...arr].sort((a,b)=>a-b);
+      const pos = (s.length - 1) * q;
+      const base = Math.floor(pos);
+      const rest = pos - base;
+      if (s[base+1] !== undefined) return s[base] + rest * (s[base+1] - s[base]);
+      return s[base];
+    }
+
+    function cagrFromWealth(wealthSeries, periodsPerYear=252){
+      if (wealthSeries.length < 2) return 0;
+      const start = wealthSeries[0];
+      const end = wealthSeries[wealthSeries.length-1];
+      const years = wealthSeries.length / periodsPerYear;
+      if (start <= 0 || end <= 0 || years <= 0) return 0;
+      return Math.pow(end / start, 1/years) - 1;
+    }
+
+    function annualizeReturnMean(dailyMean, periodsPerYear=252){
+      // geometric approximation via log?
+      // Use arithmetic mean -> annualized ≈ (1+mean)^252 - 1 for stability
+      return Math.pow(1 + dailyMean, periodsPerYear) - 1;
+    }
+
+    function annualizeVol(dailyStd, periodsPerYear=252){
+      return dailyStd * Math.sqrt(periodsPerYear);
+    }
+
+    function sharpe(annRet, annVol, rf){
+      if (annVol <= 0) return 0;
+      return (annRet - rf) / annVol;
+    }
+
+    function maxDrawdown(ddSeries){
+      let m = 0;
+      for (const x of ddSeries) if (x < m) m = x;
+      return m;
+    }
+
+    function rollingWindow(arr, window, fn){
+      const out = new Array(arr.length).fill(null);
+      if (arr.length < window) return out;
+      for (let i=window-1;i<arr.length;i++){
+        const slice = arr.slice(i-window+1, i+1);
+        out[i] = fn(slice);
+      }
+      return out;
+    }
+
+    function groupAnnualReturns(datesReturns, returns){
+      // datesReturns length == returns length; date corresponds to return day (e.g. date[i] = prices[i+1])
+      const byYear = new Map(); // year -> compounded return
+      for (let i=0;i<returns.length;i++){
+        const y = datesReturns[i].getFullYear();
+        if (!byYear.has(y)) byYear.set(y, 1);
+        byYear.set(y, byYear.get(y) * (1 + returns[i]));
+      }
+      const years = [...byYear.keys()].sort((a,b)=>a-b);
+      const vals = years.map(y => byYear.get(y) - 1);
+      return { years, vals };
+    }
+
+    function groupMonthlyReturns(datesReturns, returns){
+      // returns compounded monthly returns map: year -> month -> return
+      const map = new Map(); // year -> Map(month0..11 -> compFactor)
+      for (let i=0;i<returns.length;i++){
+        const d = datesReturns[i];
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        if (!map.has(y)) map.set(y, new Map());
+        const ym = map.get(y);
+        if (!ym.has(m)) ym.set(m, 1);
+        ym.set(m, ym.get(m) * (1 + returns[i]));
+      }
+      const years = [...map.keys()].sort((a,b)=>a-b);
+      const months = [...Array(12)].map((_,i)=>i);
+      const matrix = years.map(y => months.map(m => {
+        const ym = map.get(y);
+        return ym && ym.has(m) ? (ym.get(m) - 1) : null;
+      }));
+      return { years, months, matrix };
+    }
+
+    function corrMatrix(returnsDict){
+      // returnsDict: {asset: [..]} all same length
+      const n = returnsDict[ASSETS[0]].length;
+      const means = {};
+      const stds = {};
+      for (const a of ASSETS){
+        means[a] = mean(returnsDict[a]);
+        stds[a] = std(returnsDict[a]);
+      }
+      const C = ASSETS.map(()=>ASSETS.map(()=>0));
+      for (let i=0;i<ASSETS.length;i++){
+        for (let j=0;j<ASSETS.length;j++){
+          const ai = ASSETS[i], aj = ASSETS[j];
+          if (i === j){ C[i][j] = 1; continue; }
+          const si = stds[ai], sj = stds[aj];
+          if (si === 0 || sj === 0){ C[i][j] = 0; continue; }
+          let cov = 0;
+          for (let t=0;t<n;t++){
+            cov += (returnsDict[ai][t]-means[ai])*(returnsDict[aj][t]-means[aj]);
+          }
+          cov = cov / (n - 1);
+          C[i][j] = cov / (si * sj);
+        }
+      }
+      return C;
+    }
+
+    function avgOffDiagonalCorr(C){
+      let s=0, c=0;
+      for (let i=0;i<C.length;i++){
+        for (let j=0;j<C.length;j++){
+          if (i===j) continue;
+          s += C[i][j]; c++;
+        }
+      }
+      return c ? s/c : 0;
+    }
+
+    function covMatrix(returnsDict){
+      const n = returnsDict[ASSETS[0]].length;
+      const means = {};
+      for (const a of ASSETS) means[a] = mean(returnsDict[a]);
+      const S = ASSETS.map(()=>ASSETS.map(()=>0));
+      for (let i=0;i<ASSETS.length;i++){
+        for (let j=0;j<ASSETS.length;j++){
+          const ai = ASSETS[i], aj = ASSETS[j];
+          let cov = 0;
+          for (let t=0;t<n;t++){
+            cov += (returnsDict[ai][t]-means[ai])*(returnsDict[aj][t]-means[aj]);
+          }
+          cov = cov / (n - 1);
+          S[i][j] = cov;
+        }
+      }
+      return S;
+    }
+
+    function dot(a,b){
+      let s=0; for (let i=0;i<a.length;i++) s += a[i]*b[i];
+      return s;
+    }
+
+    function matVec(M, v){
+      const out = new Array(M.length).fill(0);
+      for (let i=0;i<M.length;i++){
+        let s=0;
+        for (let j=0;j<v.length;j++) s += M[i][j]*v[j];
+        out[i] = s;
+      }
+      return out;
+    }
+
+    function portfolioVolFromCov(weightsArr, cov){
+      // cov daily
+      const tmp = matVec(cov, weightsArr);
+      return Math.sqrt(dot(weightsArr, tmp));
+    }
+
+    function riskContributions(weightsArr, cov){
+      // RC_i ≈ w_i * (Σw)_i / (w^T Σ w)
+      const sigmaW = matVec(cov, weightsArr);
+      const portVar = dot(weightsArr, sigmaW);
+      const rc = weightsArr.map((w,i)=> (portVar>0 ? (w * sigmaW[i] / portVar) : 0));
+      return rc;
+    }
+
+    // ============================================================
+    // ===================== OPTIMIZATION =========================
+    // ============================================================
+
+    function randDirichlet(k){
+      // simple: exponential draws normalized
+      const x = new Array(k);
+      let s=0;
+      for (let i=0;i<k;i++){
+        const u = Math.random();
+        const e = -Math.log(Math.max(1e-12, u));
+        x[i] = e; s += e;
+      }
+      for (let i=0;i<k;i++) x[i] /= s;
+      return x;
+    }
+
+    function calcPortfolioPoint(weightsArr, muDailyArr, covDaily, rfAnn){
+      const muDaily = dot(weightsArr, muDailyArr);
+      const annRet = annualizeReturnMean(muDaily, 252);
+      const volDaily = portfolioVolFromCov(weightsArr, covDaily);
+      const annVol = annualizeVol(volDaily, 252);
+      const sh = sharpe(annRet, annVol, rfAnn);
+      return { annRet, annVol, sh };
+    }
+
+    async function runMonteCarlo(muDailyArr, covDaily, rfAnn, n=10000){
+      state.mc.running = true;
+      setStatus(document.getElementById("mcStatus"), `<b>Monte-Carlo:</b> <span id="mcSpan">läuft…</span>`);
+      const mcSpan = document.getElementById("mcSpan");
+      const points = [];
+      let bestSharpe = null;
+      let minVar = null;
+
+      const optW = ASSETS.map(a=>WEIGHTS_OPT[a]);
+      const optPt = calcPortfolioPoint(optW, muDailyArr, covDaily, rfAnn);
+
+      const batch = 500;
+      for (let i=0;i<n;i++){
+        const w = randDirichlet(ASSETS.length);
+        const pt = calcPortfolioPoint(w, muDailyArr, covDaily, rfAnn);
+        points.push({
+          x: pt.annVol,
+          y: pt.annRet,
+          z: pt.sh,
+          w
+        });
+
+        if (!bestSharpe || pt.sh > bestSharpe.pt.sh){
+          bestSharpe = { w, pt };
+        }
+        if (!minVar || pt.annVol < minVar.pt.annVol){
+          minVar = { w, pt };
+        }
+
+        if (i % batch === 0){
+          mcSpan.textContent = `läuft… ${fmtNum(i,0)} / ${fmtNum(n,0)}`;
+          await new Promise(requestAnimationFrame);
+        }
+      }
+
+      // "Max return" highlight (optional) – we focus on required three
+      const highlights = {
+        optimized: { w: optW, pt: optPt },
+        minVar,
+        maxSharpe: bestSharpe
+      };
+
+      state.mc.points = points;
+      state.mc.highlights = highlights;
+      state.mc.running = false;
+      mcSpan.textContent = `fertig (${fmtNum(n,0)} Portfolios)`;
+      return { points, highlights };
+    }
+
+    // ============================================================
+    // ===================== CHARTS ===============================
+    // ============================================================
+
+    function renderAllocation(weights){
+      // Donut
+      mountChart("#chAllocDonut", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type: "donut", height: 320 },
+        series: ASSETS.map(a => Math.round(weights[a]*10000)/100),
+        labels: ASSETS,
+        colors: ASSETS.map(a => ASSET_COLORS[a]),
+        legend: { position: "bottom" },
+        tooltip: {
+          y: { formatter: (v)=> `${fmtNum(v,2)} %` }
+        },
+        plotOptions: {
+          pie: {
+            donut: { size: "70%" }
+          }
+        }
+      });
+
+      // Horizontal bar sorted
+      const sorted = [...ASSETS].sort((a,b)=>weights[b]-weights[a]);
+      mountChart("#chAllocBars", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type: "bar", height: 320 },
+        series: [{
+          name: "Gewicht",
+          data: sorted.map(a => weights[a] * 100)
+        }],
+        colors: [getCss("--ui")],
+        plotOptions: {
+          bar: { horizontal: true, borderRadius: 10, barHeight: "55%" }
+        },
+        xaxis: {
+          categories: sorted,
+          labels: { formatter: (v)=> `${fmtNum(parseFloat(v),1)} %` }
+        },
+        tooltip: {
+          y: { formatter: (v)=> `${fmtNum(v,2)} %` }
+        }
+      });
+
+      // Table
+      const tbl = document.getElementById("tblWeights");
+      const rows = [...ASSETS].sort((a,b)=>weights[b]-weights[a]).map(a=>{
+        const w = weights[a];
+        let comment = "Ausgewogen";
+        if (w >= 0.35) comment = "Dominant (starker Treiber)";
+        else if (w >= 0.10) comment = "Relevanter Anteil";
+        else if (w > 0.01) comment = "Kleiner Anteil (Diversifikation)";
+        else comment = "Nahe 0% (kaum Beitrag)";
+        const pct = w * 100;
+        return `
+          <tr>
+            <td style="font-weight:900;">
+              <span class="dot"><i style="background:${ASSET_COLORS[a]}"></i>${a}</span>
+            </td>
+            <td style="font-weight:900;">${fmtNum(pct,2)} %</td>
+            <td>
+              <div class="bar" title="${fmtNum(pct,2)} %">
+                <span style="width:${pct}%; background:${ASSET_COLORS[a]}"></span>
+              </div>
+            </td>
+            <td>${comment}</td>
+          </tr>
+        `;
+      }).join("");
+
+      tbl.innerHTML = `
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Gewicht</th>
+            <th>Visual</th>
+            <th>Kommentar</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      `;
+    }
+
+    function renderPerformanceCharts(ctx){
+      const { datesPrices, datesReturns, assetCum, portfolioCum, equalCum, portfolioWealth, assetWealth, equalWealth, annual, roll3, roll5, rollVol, dd, hist } = ctx;
+
+      // Kumulierte Rendite
+      const seriesCum = [];
+      seriesCum.push({ name: "Portfolio (optimiert)", data: datesReturns.map((d,i)=>[d.getTime(), portfolioCum[i]*100]) });
+      if (state.view.showEqual) seriesCum.push({ name: "Portfolio (gleichgewichtet)", data: datesReturns.map((d,i)=>[d.getTime(), equalCum[i]*100]) });
+      if (state.view.showAssets){
+        for (const a of ASSETS){
+          seriesCum.push({ name: a, data: datesReturns.map((d,i)=>[d.getTime(), assetCum[a][i]*100]) });
+        }
+      }
+
+      mountChart("#chCumReturn", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"line", height: 380 },
+        series: seriesCum,
+        colors: [
+          ASSET_COLORS.PORTFOLIO,
+          ASSET_COLORS.EQUAL,
+          ASSET_COLORS.JNJ, ASSET_COLORS.KO, ASSET_COLORS.MSFT, ASSET_COLORS.JPM
+        ],
+        yaxis: {
+          labels: { formatter: (v)=> `${fmtNum(v,1)} %` },
+          title: { text: "Kumulierte Rendite" }
+        },
+        tooltip: {
+          shared:true,
+          y: { formatter: (v)=> `${fmtNum(v,2)} %` }
+        }
+      });
+
+      // Wealth
+      const seriesWealth = [];
+      seriesWealth.push({ name: "Portfolio (optimiert)", data: datesReturns.map((d,i)=>[d.getTime(), portfolioWealth[i]]) });
+      if (state.view.showEqual) seriesWealth.push({ name: "Portfolio (gleichgewichtet)", data: datesReturns.map((d,i)=>[d.getTime(), equalWealth[i]]) });
+      if (state.view.showAssets){
+        for (const a of ASSETS){
+          seriesWealth.push({ name: a, data: datesReturns.map((d,i)=>[d.getTime(), assetWealth[a][i]]) });
+        }
+      }
+
+      mountChart("#chWealth", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"line", height: 380 },
+        series: seriesWealth,
+        colors: [
+          ASSET_COLORS.PORTFOLIO,
+          ASSET_COLORS.EQUAL,
+          ASSET_COLORS.JNJ, ASSET_COLORS.KO, ASSET_COLORS.MSFT, ASSET_COLORS.JPM
+        ],
+        yaxis: {
+          labels: { formatter: (v)=> fmtCur(v) },
+          title: { text: "Vermögen" }
+        },
+        tooltip: {
+          shared:true,
+          y: { formatter: (v)=> fmtCur(v) }
+        }
+      });
+
+      // Annual returns grouped bars
+      const cats = annual.years.map(String);
+      const annualSeries = [];
+      annualSeries.push({ name:"Portfolio (optimiert)", data: annual.portfolio.map(x=>x*100) });
+      if (state.view.showEqual) annualSeries.push({ name:"Portfolio (gleichgewichtet)", data: annual.equal.map(x=>x*100) });
+      if (state.view.showAssets){
+        for (const a of ASSETS){
+          annualSeries.push({ name:a, data: annual.assets[a].map(x=>x*100) });
+        }
+      }
+
+      mountChart("#chAnnual", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"bar", height: 380, stacked: false },
+        series: annualSeries,
+        colors: [
+          ASSET_COLORS.PORTFOLIO,
+          ASSET_COLORS.EQUAL,
+          ASSET_COLORS.JNJ, ASSET_COLORS.KO, ASSET_COLORS.MSFT, ASSET_COLORS.JPM
+        ],
+        plotOptions: { bar: { borderRadius: 6, columnWidth: "70%" } },
+        xaxis: { categories: cats, title: { text: "Jahr" } },
+        yaxis: {
+          title: { text: "Rendite" },
+          labels: { formatter: (v)=> `${fmtNum(v,1)} %` }
+        },
+        tooltip: { y: { formatter: (v)=> `${fmtNum(v,2)} %` } }
+      });
+
+      // Rolling returns 3y
+      mountChart("#chRollingRet3", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"line", height: 260 },
+        series: [
+          { name:"Rolling Return 3J (optimiert)", data: roll3.dates.map((d,i)=>[d.getTime(), roll3.portfolio[i] === null ? null : roll3.portfolio[i]*100]) },
+          ...(state.view.showEqual ? [{ name:"Rolling Return 3J (gleichgewichtet)", data: roll3.dates.map((d,i)=>[d.getTime(), roll3.equal[i] === null ? null : roll3.equal[i]*100]) }] : [])
+        ],
+        colors: [ASSET_COLORS.PORTFOLIO, ASSET_COLORS.EQUAL],
+        yaxis: { labels: { formatter: (v)=> v===null ? "" : `${fmtNum(v,1)} %` }, title:{ text:"3J-Rendite" } },
+        tooltip: { y: { formatter: (v)=> v===null ? "n/a" : `${fmtNum(v,2)} %` } }
+      });
+
+      // Rolling returns 5y
+      mountChart("#chRollingRet5", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"line", height: 260 },
+        series: [
+          { name:"Rolling Return 5J (optimiert)", data: roll5.dates.map((d,i)=>[d.getTime(), roll5.portfolio[i] === null ? null : roll5.portfolio[i]*100]) },
+          ...(state.view.showEqual ? [{ name:"Rolling Return 5J (gleichgewichtet)", data: roll5.dates.map((d,i)=>[d.getTime(), roll5.equal[i] === null ? null : roll5.equal[i]*100]) }] : [])
+        ],
+        colors: [ASSET_COLORS.PORTFOLIO, ASSET_COLORS.EQUAL],
+        yaxis: { labels: { formatter: (v)=> v===null ? "" : `${fmtNum(v,1)} %` }, title:{ text:"5J-Rendite" } },
+        tooltip: { y: { formatter: (v)=> v===null ? "n/a" : `${fmtNum(v,2)} %` } }
+      });
+
+      // Rolling Volatility
+      mountChart("#chRollVol", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"line", height: 380 },
+        series: [
+          { name:"Volatilität 63T (optimiert)", data: rollVol.dates.map((d,i)=>[d.getTime(), rollVol.v63p[i] === null ? null : rollVol.v63p[i]*100]) },
+          { name:"Volatilität 252T (optimiert)", data: rollVol.dates.map((d,i)=>[d.getTime(), rollVol.v252p[i] === null ? null : rollVol.v252p[i]*100]) },
+          ...(state.view.showEqual ? [
+            { name:"Volatilität 63T (gleichgewichtet)", data: rollVol.dates.map((d,i)=>[d.getTime(), rollVol.v63e[i] === null ? null : rollVol.v63e[i]*100]) },
+            { name:"Volatilität 252T (gleichgewichtet)", data: rollVol.dates.map((d,i)=>[d.getTime(), rollVol.v252e[i] === null ? null : rollVol.v252e[i]*100]) },
+          ] : [])
+        ],
+        colors: [ASSET_COLORS.PORTFOLIO, getCss("--ui"), ASSET_COLORS.EQUAL, "#94a3b8"],
+        yaxis: { title:{ text:"Volatilität (annualisiert)" }, labels: { formatter:(v)=> v===null ? "" : `${fmtNum(v,1)} %` } },
+        tooltip: { y: { formatter:(v)=> v===null ? "n/a" : `${fmtNum(v,2)} %` } }
+      });
+
+      // Drawdown
+      const ddSeries = [
+        { name:"Drawdown (optimiert)", data: datesReturns.map((d,i)=>[d.getTime(), dd.portfolio[i]*100]) }
+      ];
+      if (state.view.showEqual){
+        ddSeries.push({ name:"Drawdown (gleichgewichtet)", data: datesReturns.map((d,i)=>[d.getTime(), dd.equal[i]*100]) });
+      }
+      if (state.view.showAssets){
+        for (const a of ASSETS){
+          ddSeries.push({ name:`Drawdown ${a}`, data: datesReturns.map((d,i)=>[d.getTime(), dd.assets[a][i]*100]) });
+        }
+      }
+      mountChart("#chDrawdown", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"area", height: 380 },
+        series: ddSeries,
+        colors: [
+          ASSET_COLORS.PORTFOLIO,
+          ASSET_COLORS.EQUAL,
+          ASSET_COLORS.JNJ, ASSET_COLORS.KO, ASSET_COLORS.MSFT, ASSET_COLORS.JPM
+        ],
+        stroke: { width: 2, curve:"straight" },
+        fill: { type:"solid", opacity: 0.18 },
+        yaxis: {
+          title:{ text:"Drawdown" },
+          labels:{ formatter:(v)=> `${fmtNum(v,1)} %` }
+        },
+        tooltip: { y:{ formatter:(v)=> `${fmtNum(v,2)} %` } }
+      });
+
+      // Histogram (Portfolio daily returns)
+      mountChart("#chHist", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"bar", height: 380 },
+        series: [{ name:"Häufigkeit", data: hist.counts }],
+        xaxis: { categories: hist.labels, title: { text:"Tägliche Rendite (Bins)" }, labels: { rotate: -45 } },
+        yaxis: { title: { text:"Anzahl Tage" } },
+        tooltip: {
+          shared:false,
+          y:{ formatter:(v)=> `${fmtNum(v,0)} Tage` }
+        },
+        plotOptions: { bar: { borderRadius: 6, columnWidth: "92%" } },
+        colors: [getCss("--ui3")]
+      });
+
+      // Monthly heatmap (custom HTML)
+      renderMonthlyHeatmap(ctx.monthly);
+    }
+
+    function renderMonthlyHeatmap(monthly){
+      const el = document.getElementById("monthlyHeatmap");
+      const monthNames = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+
+      // Determine min/max for color scaling
+      let min=Infinity, max=-Infinity;
+      for (const row of monthly.matrix){
+        for (const v of row){
+          if (v === null) continue;
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+      }
+      if (!isFinite(min) || !isFinite(max)){ min=-0.05; max=0.05; }
+
+      function cellStyle(v){
+        if (v === null) return `background: rgba(17,24,39,0.04); border: 1px solid rgba(17,24,39,0.06); color:#666;`;
+        // map negative -> red tint, positive -> green tint; intensity by abs ratio
+        const t = (v - min) / (max - min + 1e-12);
+        const intensity = 0.15 + 0.55 * Math.abs((v) / (Math.max(Math.abs(min), Math.abs(max)) + 1e-12));
+        if (v >= 0){
+          return `background: rgba(34,197,94,${intensity.toFixed(3)}); border: 1px solid rgba(34,197,94,0.25); color:#052e16;`;
+        } else {
+          return `background: rgba(239,68,68,${intensity.toFixed(3)}); border: 1px solid rgba(239,68,68,0.25); color:#450a0a;`;
+        }
+      }
+
+      let html = `<table class="heatmap"><thead><tr><th class="y">Jahr</th>${monthNames.map(m=>`<th>${m}</th>`).join("")}</tr></thead><tbody>`;
+      for (let i=0;i<monthly.years.length;i++){
+        const y = monthly.years[i];
+        html += `<tr><td class="y">${y}</td>`;
+        for (let m=0;m<12;m++){
+          const v = monthly.matrix[i][m];
+          const txt = (v===null) ? "–" : fmtPct(v,2);
+          html += `<td><span class="cell" style="${cellStyle(v)}" title="${y} ${monthNames[m]}: ${v===null ? "n/a" : fmtPct(v,2)}">${txt}</span></td>`;
+        }
+        html += `</tr>`;
+      }
+      html += `</tbody></table>`;
+      el.innerHTML = html;
+    }
+
+    function renderRiskCharts(ctx){
+      const { assetStats, portStats, eqStats, varStats, mddStats } = ctx;
+
+      // Vol per asset
+      mountChart("#chVolAssets", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"bar", height: 380 },
+        series: [{ name:"Volatilität (annualisiert)", data: ASSETS.map(a=>assetStats[a].annVol*100) }],
+        xaxis: { categories: ASSETS, title: { text:"Assets" } },
+        yaxis: { title:{ text:"Volatilität" }, labels:{ formatter:(v)=>`${fmtNum(v,1)} %` } },
+        colors: ASSETS.map(a=>ASSET_COLORS[a]),
+        plotOptions: { bar: { borderRadius: 10, columnWidth: "60%", distributed: true } },
+        tooltip: { y: { formatter:(v)=> `${fmtNum(v,2)} %` } },
+        legend: { show:false }
+      });
+
+      // Vol compare
+      const avgAssetVol = mean(ASSETS.map(a=>assetStats[a].annVol));
+      mountChart("#chVolCompare", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"bar", height: 380 },
+        series: [{ name:"Volatilität (annualisiert)", data: [portStats.annVol*100, avgAssetVol*100, (state.view.showEqual? eqStats.annVol*100 : null)].filter(v=>v!==null) }],
+        xaxis: { categories: (state.view.showEqual? ["Portfolio (optimiert)","Ø Assets", "Portfolio (gleichgew.)"] : ["Portfolio (optimiert)","Ø Assets"]), title:{ text:"Vergleich" } },
+        yaxis: { title:{ text:"Volatilität" }, labels:{ formatter:(v)=>`${fmtNum(v,1)} %` } },
+        colors: [ASSET_COLORS.PORTFOLIO, "#94a3b8", ASSET_COLORS.EQUAL],
+        plotOptions: { bar: { borderRadius: 10, columnWidth: "55%" } },
+        legend: { show:false },
+        tooltip: { y: { formatter:(v)=> `${fmtNum(v,2)} %` } }
+      });
+
+      // Max drawdown bars
+      const cats = (state.view.showEqual? [...ASSETS, "Portfolio (opt.)", "Portfolio (gleichgew.)"] : [...ASSETS, "Portfolio (opt.)"]);
+      const data = (state.view.showEqual
+        ? [...ASSETS.map(a=>mddStats[a]*100), mddStats.portfolio*100, mddStats.equal*100]
+        : [...ASSETS.map(a=>mddStats[a]*100), mddStats.portfolio*100]
+      );
+      const colors = (state.view.showEqual
+        ? [...ASSETS.map(a=>ASSET_COLORS[a]), ASSET_COLORS.PORTFOLIO, ASSET_COLORS.EQUAL]
+        : [...ASSETS.map(a=>ASSET_COLORS[a]), ASSET_COLORS.PORTFOLIO]
+      );
+
+      mountChart("#chMddBars", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"bar", height: 380 },
+        series: [{ name:"Max Drawdown", data }],
+        xaxis: { categories: cats, title:{ text:"Serien" } },
+        yaxis: { title:{ text:"Drawdown" }, labels:{ formatter:(v)=>`${fmtNum(v,1)} %` } },
+        colors,
+        plotOptions: { bar: { borderRadius: 10, columnWidth: "60%", distributed: true } },
+        legend: { show:false },
+        tooltip: { y: { formatter:(v)=> `${fmtNum(v,2)} %` } }
+      });
+
+      // Downside + VaR bars
+      const cats2 = (state.view.showEqual? ["Downside Dev. (opt.)","Downside Dev. (gleichgew.)","VaR 95% (opt.)","VaR 99% (opt.)","VaR 95% (gleichgew.)","VaR 99% (gleichgew.)"]
+                                       : ["Downside Dev. (opt.)","VaR 95% (opt.)","VaR 99% (opt.)"]);
+      const data2 = [];
+      data2.push(portStats.annDown*100);
+      if (state.view.showEqual) data2.push(eqStats.annDown*100);
+      data2.push(Math.abs(varStats.portfolio.var95)*100);
+      data2.push(Math.abs(varStats.portfolio.var99)*100);
+      if (state.view.showEqual){
+        data2.push(Math.abs(varStats.equal.var95)*100);
+        data2.push(Math.abs(varStats.equal.var99)*100);
+      }
+
+      mountChart("#chDownVar", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"bar", height: 380 },
+        series: [{ name:"Wert", data: data2 }],
+        xaxis: { categories: cats2, labels: { rotate: -35 } },
+        yaxis: { title:{ text:"%" }, labels:{ formatter:(v)=> `${fmtNum(v,2)} %` } },
+        colors: [
+          getCss("--ui2"),
+          ASSET_COLORS.EQUAL,
+          getCss("--warn"),
+          getCss("--warn"),
+          "#fb7185",
+          "#fb7185"
+        ].slice(0, data2.length),
+        plotOptions: { bar: { borderRadius: 10, columnWidth: "60%" } },
+        legend: { show:false },
+        tooltip: { y: { formatter:(v)=> `${fmtNum(v,2)} %` } }
+      });
+    }
+
+    function renderCorrelationCharts(ctx){
+      const { corr, corrAvg, scatters } = ctx;
+
+      document.getElementById("avgCorr").textContent = fmtNum(corrAvg, 3);
+
+      // Heatmap series (Apex heatmap expects series: [{name, data:[{x,y}]}])
+      const heatSeries = ASSETS.map((rowAsset, i)=>({
+        name: rowAsset,
+        data: ASSETS.map((colAsset, j)=>({ x: colAsset, y: corr[i][j] }))
+      }));
+
+      mountChart("#chCorrHeat", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"heatmap", height: 340 },
+        series: heatSeries,
+        dataLabels: { enabled: true, formatter: (v)=> fmtNum(v,2) },
+        plotOptions: {
+          heatmap: {
+            shadeIntensity: 0.4,
+            colorScale: {
+              ranges: [
+                { from: -1, to: -0.5, name:"stark negativ", color: "rgba(239,68,68,0.75)" },
+                { from: -0.5, to: -0.2, name:"negativ", color: "rgba(239,68,68,0.45)" },
+                { from: -0.2, to:  0.2, name:"niedrig", color: "rgba(148,163,184,0.45)" },
+                { from:  0.2, to:  0.5, name:"positiv", color: "rgba(34,197,94,0.45)" },
+                { from:  0.5, to:  1, name:"stark positiv", color: "rgba(34,197,94,0.75)" }
+              ]
+            }
+          }
+        },
+        xaxis: { type: "category" },
+        yaxis: { labels: { formatter: (v)=> v } },
+        tooltip: {
+          y: { formatter: (v)=> `Korrelation: ${fmtNum(v,3)}` }
+        },
+        legend: { show:false }
+      });
+
+      // Scatter charts (returns)
+      const scBase = {
+        chart: { ...apexBase().chart, type:"scatter", height: 220, zoom: { enabled: true } },
+        xaxis: { title:{ text:"Return X" }, labels:{ formatter:(v)=> `${fmtNum(v*100,2)} %` } },
+        yaxis: { title:{ text:"Return Y" }, labels:{ formatter:(v)=> `${fmtNum(v*100,2)} %` } },
+        tooltip: {
+          shared: false,
+          x: { formatter:(v)=> `${fmtNum(v*100,2)} %` },
+          y: { formatter:(v)=> `${fmtNum(v*100,2)} %` }
+        },
+        legend: { show:false }
+      };
+
+      mountChart("#chSc1", {
+        ...scBase,
+        series: [{ name:"JNJ vs KO", data: scatters.jnj_ko }],
+        colors: [getCss("--ui")]
+      });
+      mountChart("#chSc2", {
+        ...scBase,
+        series: [{ name:"JNJ vs MSFT", data: scatters.jnj_msft }],
+        colors: [getCss("--ui2")]
+      });
+      mountChart("#chSc3", {
+        ...scBase,
+        series: [{ name:"KO vs MSFT", data: scatters.ko_msft }],
+        colors: [getCss("--ui3")]
+      });
+    }
+
+    function renderFrontier(points, highlights){
+      // Scatter with color scale by Sharpe (z)
+      const zs = points.map(p=>p.z);
+      const zmin = Math.min(...zs), zmax = Math.max(...zs);
+
+      const series = [{
+        name: "Monte-Carlo Portfolios",
+        data: points.map(p=>({ x: p.x, y: p.y, z: p.z }))
+      }];
+
+      // Add highlights as separate series (larger markers)
+      const opt = highlights.optimized.pt;
+      const minV = highlights.minVar.pt;
+      const maxS = highlights.maxSharpe.pt;
+
+      series.push({ name:"Optimiertes Portfolio", data: [{ x: opt.annVol, y: opt.annRet }] });
+      series.push({ name:"Minimum-Varianz", data: [{ x: minV.annVol, y: minV.annRet }] });
+      series.push({ name:"Maximum-Sharpe", data: [{ x: maxS.annVol, y: maxS.annRet }] });
+
+      mountChart("#chFrontier", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"scatter", height: 380, zoom: { enabled:true } },
+        series,
+        colors: [getCss("--ui"), ASSET_COLORS.PORTFOLIO, "#0f172a", "#7c3aed"],
+        markers: {
+          size: [3, 7, 7, 7],
+          strokeWidth: 0,
+          hover: { sizeOffset: 3 }
+        },
+        xaxis: {
+          title: { text:"Risiko (Volatilität, annualisiert)" },
+          labels: { formatter:(v)=> `${fmtNum(v*100,2)} %` }
+        },
+        yaxis: {
+          title: { text:"Rendite (annualisiert)" },
+          labels: { formatter:(v)=> `${fmtNum(v*100,2)} %` }
+        },
+        tooltip: {
+          shared:false,
+          custom: function({seriesIndex, dataPointIndex, w}){
+            const sName = w.globals.seriesNames[seriesIndex] || "";
+            if (seriesIndex === 0){
+              const p = points[dataPointIndex];
+              const vol = p.x, ret = p.y, sh = p.z;
+              return `
+                <div style="padding:10px 12px;">
+                  <div style="font-weight:900;margin-bottom:6px;">Monte-Carlo Portfolio</div>
+                  <div>Rendite: <b>${fmtPct(ret,2)}</b></div>
+                  <div>Volatilität: <b>${fmtPct(vol,2)}</b></div>
+                  <div>Sharpe: <b>${fmtNum(sh,3)}</b></div>
+                </div>
+              `;
+            } else {
+              const p = w.globals.initialSeries[seriesIndex].data[0];
+              return `
+                <div style="padding:10px 12px;">
+                  <div style="font-weight:900;margin-bottom:6px;">${sName}</div>
+                  <div>Rendite: <b>${fmtPct(p.y,2)}</b></div>
+                  <div>Volatilität: <b>${fmtPct(p.x,2)}</b></div>
+                </div>
+              `;
+            }
+          }
+        },
+        legend: { position:"top", horizontalAlign:"left" }
+      });
+
+      // Highlights table
+      const tbl = document.getElementById("tblFrontierHighlights");
+      const rows = [
+        ["Optimiert", highlights.optimized.pt, highlights.optimized.w],
+        ["Minimum-Varianz", highlights.minVar.pt, highlights.minVar.w],
+        ["Maximum-Sharpe", highlights.maxSharpe.pt, highlights.maxSharpe.w],
+      ].map(([name, pt, w])=>{
+        const wObj = { JNJ:w[0], KO:w[1], MSFT:w[2], JPM:w[3] };
+        return `
+          <tr>
+            <td style="font-weight:900;">${name}</td>
+            <td>${fmtPct(pt.annRet,2)}</td>
+            <td>${fmtPct(pt.annVol,2)}</td>
+            <td style="font-weight:900;">${fmtNum(pt.sh,3)}</td>
+            <td>
+              <span class="pill"><span style="color:var(--jnj)">JNJ</span> ${fmtPct(wObj.JNJ,1)}</span>
+              <span class="pill"><span style="color:var(--ko)">KO</span> ${fmtPct(wObj.KO,1)}</span>
+              <span class="pill"><span style="color:var(--msft)">MSFT</span> ${fmtPct(wObj.MSFT,1)}</span>
+              <span class="pill"><span style="color:var(--jpm)">JPM</span> ${fmtPct(wObj.JPM,1)}</span>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      tbl.innerHTML = `
+        <thead>
+          <tr>
+            <th>Portfolio</th>
+            <th>Rendite (ann.)</th>
+            <th>Volatilität (ann.)</th>
+            <th>Sharpe</th>
+            <th>Gewichte</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      `;
+    }
+
+    function renderCompareAndAttribution(ctx){
+      const { datesReturns, portfolioCum, equalCum, dd, contrib } = ctx;
+
+      // Compare cumulative (only two lines)
+      mountChart("#chCompareCum", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"line", height: 380 },
+        series: [
+          { name:"Portfolio (optimiert)", data: datesReturns.map((d,i)=>[d.getTime(), portfolioCum[i]*100]) },
+          { name:"Portfolio (gleichgewichtet)", data: datesReturns.map((d,i)=>[d.getTime(), equalCum[i]*100]) }
+        ],
+        colors: [ASSET_COLORS.PORTFOLIO, ASSET_COLORS.EQUAL],
+        yaxis: { title:{ text:"Kumulierte Rendite" }, labels:{ formatter:(v)=> `${fmtNum(v,1)} %` } },
+        tooltip: { y:{ formatter:(v)=> `${fmtNum(v,2)} %` } }
+      });
+
+      // Compare drawdown
+      mountChart("#chCompareDD", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"area", height: 380 },
+        series: [
+          { name:"Drawdown (optimiert)", data: datesReturns.map((d,i)=>[d.getTime(), dd.portfolio[i]*100]) },
+          { name:"Drawdown (gleichgewichtet)", data: datesReturns.map((d,i)=>[d.getTime(), dd.equal[i]*100]) }
+        ],
+        colors: [ASSET_COLORS.PORTFOLIO, ASSET_COLORS.EQUAL],
+        fill: { type:"solid", opacity: 0.18 },
+        yaxis: { title:{ text:"Drawdown" }, labels:{ formatter:(v)=> `${fmtNum(v,1)} %` } },
+        tooltip: { y:{ formatter:(v)=> `${fmtNum(v,2)} %` } }
+      });
+
+      // Return contribution
+      mountChart("#chRetContrib", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"bar", height: 380 },
+        series: [{ name:"Beitrag zur Ø-Rendite (annualisiert, approx.)", data: ASSETS.map(a=>contrib.ret[a]*100) }],
+        xaxis: { categories: ASSETS, title:{ text:"Assets" } },
+        yaxis: { title:{ text:"Beitrag" }, labels:{ formatter:(v)=> `${fmtNum(v,2)} %` } },
+        colors: ASSETS.map(a=>ASSET_COLORS[a]),
+        plotOptions: { bar: { borderRadius: 10, columnWidth:"60%", distributed:true } },
+        legend: { show:false },
+        tooltip: { y:{ formatter:(v)=> `${fmtNum(v,3)} %` } }
+      });
+
+      // Risk contribution
+      mountChart("#chRiskContrib", {
+        ...apexBase(),
+        chart: { ...apexBase().chart, type:"bar", height: 380 },
+        series: [{ name:"Risikobeitrag (Anteil am Portfoliorisiko)", data: ASSETS.map(a=>contrib.risk[a]*100) }],
+        xaxis: { categories: ASSETS, title:{ text:"Assets" } },
+        yaxis: { title:{ text:"Anteil" }, labels:{ formatter:(v)=> `${fmtNum(v,1)} %` } },
+        colors: ASSETS.map(a=>ASSET_COLORS[a]),
+        plotOptions: { bar: { borderRadius: 10, columnWidth:"60%", distributed:true } },
+        legend: { show:false },
+        tooltip: { y:{ formatter:(v)=> `${fmtNum(v,2)} %` } }
+      });
+    }
+
+    // ============================================================
+    // ===================== PIPELINE =============================
+    // ============================================================
+
+    function buildContextFromState(){
+      // Prepare sliced data by date range (prices)
+      const pricesDict = state.prices;
+      const dates = state.dates;
+
+      const from = state.view.from;
+      const to = state.view.to;
+
+      const sliced = sliceByDateRange(dates, pricesDict, from, to);
+      const datesPrices = sliced.dates;
+      const prices = sliced.series;
+
+      // returns align to prices[i+1] dates
+      const assetReturns = {};
+      for (const a of ASSETS) assetReturns[a] = calcDailyReturnsFromPrices(prices[a]);
+      const datesReturns = datesPrices.slice(1);
+
+      // Portfolio returns
+      const portR = portfolioReturns(assetReturns, WEIGHTS_OPT);
+      const eqR = portfolioReturns(assetReturns, WEIGHTS_EQ);
+
+      // cum returns
+      const portfolioCum = cumulativeFromReturns(portR);
+      const equalCum = cumulativeFromReturns(eqR);
+      const assetCum = {};
+      for (const a of ASSETS) assetCum[a] = cumulativeFromReturns(assetReturns[a]);
+
+      // wealth
+      const initial = 10000;
+      const portfolioWealth = wealthFromReturns(portR, initial);
+      const equalWealth = wealthFromReturns(eqR, initial);
+      const assetWealth = {};
+      for (const a of ASSETS) assetWealth[a] = wealthFromReturns(assetReturns[a], initial);
+
+      // drawdowns
+      const dd = {
+        portfolio: drawdownSeries(portR),
+        equal: drawdownSeries(eqR),
+        assets: {}
+      };
+      for (const a of ASSETS) dd.assets[a] = drawdownSeries(assetReturns[a]);
+
+      // annual returns
+      const annual = { years: [], portfolio: [], equal: [], assets: {} };
+      const annP = groupAnnualReturns(datesReturns, portR);
+      const annE = groupAnnualReturns(datesReturns, eqR);
+      annual.years = unionSorted(annP.years, annE.years);
+      annual.portfolio = alignByYears(annual.years, annP.years, annP.vals);
+      annual.equal = alignByYears(annual.years, annE.years, annE.vals);
+      for (const a of ASSETS){
+        const annA = groupAnnualReturns(datesReturns, assetReturns[a]);
+        annual.assets[a] = alignByYears(annual.years, annA.years, annA.vals);
+      }
+
+      // rolling returns (3y=756, 5y=1260) on wealth index
+      const roll3p = rollingWindow(portR, 756, (sl)=> (sl.reduce((acc,x)=>acc*(1+x),1) - 1));
+      const roll5p = rollingWindow(portR, 1260, (sl)=> (sl.reduce((acc,x)=>acc*(1+x),1) - 1));
+      const roll3e = rollingWindow(eqR, 756, (sl)=> (sl.reduce((acc,x)=>acc*(1+x),1) - 1));
+      const roll5e = rollingWindow(eqR, 1260, (sl)=> (sl.reduce((acc,x)=>acc*(1+x),1) - 1));
+      const roll3 = { dates: datesReturns, portfolio: roll3p, equal: roll3e };
+      const roll5 = { dates: datesReturns, portfolio: roll5p, equal: roll5e };
+
+      // rolling vol (63/252) annualized
+      const v63p = rollingWindow(portR, 63, (sl)=> annualizeVol(std(sl), 252));
+      const v252p = rollingWindow(portR, 252, (sl)=> annualizeVol(std(sl), 252));
+      const v63e = rollingWindow(eqR, 63, (sl)=> annualizeVol(std(sl), 252));
+      const v252e = rollingWindow(eqR, 252, (sl)=> annualizeVol(std(sl), 252));
+      const rollVol = { dates: datesReturns, v63p, v252p, v63e, v252e };
+
+      // histogram bins for portfolio returns
+      const hist = makeHistogram(portR, 34);
+
+      // monthly heatmap for portfolio
+      const monthly = groupMonthlyReturns(datesReturns, portR);
+
+      // stats
+      const rfAnn = state.rf;
+      const portStats = calcStats(portR, rfAnn);
+      const eqStats = calcStats(eqR, rfAnn);
+      const assetStats = {};
+      for (const a of ASSETS) assetStats[a] = calcStats(assetReturns[a], rfAnn);
+
+      // VaR (historical daily) and include eq
+      const varStats = {
+        portfolio: { var95: quantile(portR, 0.05), var99: quantile(portR, 0.01) },
+        equal: { var95: quantile(eqR, 0.05), var99: quantile(eqR, 0.01) }
+      };
+
+      // max drawdown stats
+      const mddStats = { portfolio: maxDrawdown(dd.portfolio), equal: maxDrawdown(dd.equal) };
+      for (const a of ASSETS) mddStats[a] = maxDrawdown(dd.assets[a]);
+
+      // correlations
+      const corr = corrMatrix(assetReturns);
+      const corrAvg = avgOffDiagonalCorr(corr);
+
+      // scatter samples (downsample for performance)
+      const scatters = makeScatterSamples(assetReturns, 900);
+
+      // attribution approx
+      const muDailyArr = ASSETS.map(a => mean(assetReturns[a]));
+      const covDaily = covMatrix(assetReturns);
+      const wOptArr = ASSETS.map(a => WEIGHTS_OPT[a]);
+      const rc = riskContributions(wOptArr, covDaily);
+      const contrib = {
+        ret: {},
+        risk: {}
+      };
+      for (let i=0;i<ASSETS.length;i++){
+        const a = ASSETS[i];
+        contrib.ret[a] = WEIGHTS_OPT[a] * annualizeReturnMean(muDailyArr[i], 252);
+        contrib.risk[a] = rc[i];
+      }
+      // normalize return contributions to sum to portfolio return for interpretability
+      const portAnnRet = annualizeReturnMean(dot(wOptArr, muDailyArr), 252);
+      const retSum = ASSETS.reduce((s,a)=>s+contrib.ret[a],0);
+      if (retSum !== 0){
+        for (const a of ASSETS) contrib.ret[a] = contrib.ret[a] * (portAnnRet / retSum);
+      }
+
+      return {
+        datesPrices,
+        datesReturns,
+        prices,
+        assetReturns,
+        portR,
+        eqR,
+        assetCum,
+        portfolioCum,
+        equalCum,
+        portfolioWealth,
+        equalWealth,
+        assetWealth,
+        dd,
+        annual,
+        roll3,
+        roll5,
+        rollVol,
+        hist,
+        monthly,
+        assetStats,
+        portStats,
+        eqStats,
+        varStats,
+        mddStats,
+        corr,
+        corrAvg,
+        scatters,
+        muDailyArr,
+        covDaily,
+        contrib
+      };
+    }
+
+    function calcStats(dailyReturns, rfAnn){
+      const m = mean(dailyReturns);
+      const s = std(dailyReturns);
+      const annRet = annualizeReturnMean(m, 252);
+      const annVol = annualizeVol(s, 252);
+      const annDown = annualizeVol(downsideDeviation(dailyReturns, 0), 252);
+      const sh = sharpe(annRet, annVol, rfAnn);
+      const wealth = wealthFromReturns(dailyReturns, 1);
+      const cagr = cagrFromWealth(wealth, 252);
+      const dd = drawdownSeries(dailyReturns);
+      const mdd = maxDrawdown(dd);
+      const var95 = quantile(dailyReturns, 0.05);
+      return { annRet, annVol, annDown, sh, cagr, mdd, var95 };
+    }
+
+    function unionSorted(a, b){
+      const set = new Set([...a, ...b]);
+      return [...set].sort((x,y)=>x-y);
+    }
+
+    function alignByYears(allYears, years, vals){
+      const map = new Map();
+      for (let i=0;i<years.length;i++) map.set(years[i], vals[i]);
+      return allYears.map(y => map.has(y) ? map.get(y) : null);
+    }
+
+    function makeHistogram(arr, bins=30){
+      const min = Math.min(...arr);
+      const max = Math.max(...arr);
+      const pad = 0.0005;
+      const lo = min - pad, hi = max + pad;
+      const w = (hi - lo) / bins;
+      const counts = new Array(bins).fill(0);
+      for (const x of arr){
+        const idx = clamp(Math.floor((x - lo)/w), 0, bins-1);
+        counts[idx]++;
+      }
+      const labels = [];
+      for (let i=0;i<bins;i++){
+        const a = lo + i*w;
+        const b = a + w;
+        labels.push(`${fmtNum(a*100,2)}% … ${fmtNum(b*100,2)}%`);
+      }
+      return { labels, counts };
+    }
+
+    function makeScatterSamples(returnsDict, n=800){
+      // downsample uniformly
+      const len = returnsDict[ASSETS[0]].length;
+      const step = Math.max(1, Math.floor(len / n));
+      const pick = [];
+      for (let i=0;i<len;i+=step) pick.push(i);
+
+      const pairs = (a,b)=> pick.map(i=> [returnsDict[a][i], returnsDict[b][i]]);
+      return {
+        jnj_ko: pairs("JNJ","KO"),
+        jnj_msft: pairs("JNJ","MSFT"),
+        ko_msft: pairs("KO","MSFT")
+      };
+    }
+
+    async function recomputeAndRender(){
+      // KPI: show period span and guard if insufficient
+      const dataSpan = document.getElementById("dataSpan");
+      const dataStatus = document.getElementById("dataStatus");
+
+      if (!state.dates.length || !ASSETS.every(a => ensureArrayLen(state.prices[a], state.dates.length))){
+        setStatus(dataStatus, `<b>Daten:</b> Fehler · Demo-Daten werden geladen`, true);
+        loadDemoData();
+      }
+
+      const minDate = state.dates[0];
+      const maxDate = state.dates[state.dates.length-1];
+      dataSpan.textContent = `${minDate.toLocaleDateString("de-DE")} – ${maxDate.toLocaleDateString("de-DE")} (${fmtNum(state.dates.length,0)} Tage)`;
+
+      // Build context (sliced)
+      const ctx = buildContextFromState();
+
+      // Update KPIs (Portfolio optimized)
+      document.getElementById("kpiCagr").textContent   = fmtPct(ctx.portStats.cagr, 2);
+      document.getElementById("kpiVol").textContent    = fmtPct(ctx.portStats.annVol, 2);
+      document.getElementById("kpiSharpe").textContent = fmtNum(ctx.portStats.sh, 3);
+      document.getElementById("kpiMdd").textContent    = fmtPct(ctx.portStats.mdd, 2);
+      document.getElementById("kpiDown").textContent   = fmtPct(ctx.portStats.annDown, 2);
+      document.getElementById("kpiVar").textContent    = fmtPct(ctx.portStats.var95, 2);
+
+      // Allocation (always fixed optimized weights)
+      renderAllocation(WEIGHTS_OPT);
+
+      // Performance
+      renderPerformanceCharts(ctx);
+
+      // Risk
+      renderRiskCharts(ctx);
+
+      // Correlation
+      renderCorrelationCharts({ corr: ctx.corr, corrAvg: ctx.corrAvg, scatters: ctx.scatters });
+
+      // Compare & Attribution
+      renderCompareAndAttribution(ctx);
+
+      // Monte Carlo (efficient frontier) – run on-demand with non-blocking updates
+      // Only rerun when not running; rerun if rf changes or date window changes
+      const rfAnn = state.rf;
+      const muDailyArr = ctx.muDailyArr;
+      const covDaily = ctx.covDaily;
+
+      // IfI: If already have points and rf unchanged in this session, keep; else rerun
+      const needMC = !state.mc.points.length || state.mc.lastKey !== mcKey(muDailyArr, covDaily, rfAnn);
+      if (!state.mc.running && needMC){
+        state.mc.lastKey = mcKey(muDailyArr, covDaily, rfAnn);
+        const { points, highlights } = await runMonteCarlo(muDailyArr, covDaily, rfAnn, 10000);
+        renderFrontier(points, highlights);
+      } else if (!state.mc.running && state.mc.points.length && state.mc.highlights){
+        renderFrontier(state.mc.points, state.mc.highlights);
+      }
+    }
+
+    function mcKey(mu, cov, rf){
+      // compact key (not cryptographic) to detect changes
+      const m = mu.map(x=>x.toFixed(6)).join(",");
+      const c = cov.flat().slice(0, 8).map(x=>x.toFixed(6)).join(","); // partial for speed
+      return `${m}|${c}|${rf.toFixed(4)}`;
+    }
+
+    // ============================================================
+    // ===================== DATA LOADING =========================
+    // ============================================================
+
+    function loadDemoData(){
+      // Generate correlated daily returns and price paths for ~10 Jahre (2520 Tage)
+      const n = 2520; // ~10 years
+      const start = new Date("2016-01-04T00:00:00"); // trading-like start
+      const dates = [];
+      let d = new Date(start);
+
+      // create business-day-like sequence (skip weekends)
+      while (dates.length < n){
+        const day = d.getDay();
+        if (day !== 0 && day !== 6) dates.push(new Date(d));
+        d.setDate(d.getDate() + 1);
+      }
+
+      // Target daily drifts (approx) and vols (approx)
+      // (synthetic, but consistent & stable)
+      const mu = { JNJ: 0.00028, KO: 0.00022, MSFT: 0.00040, JPM: 0.00030 };
+      const vol = { JNJ: 0.0100,  KO: 0.0090,  MSFT: 0.0135,  JPM: 0.0125 };
+
+      // Correlation matrix (plausible)
+      const Corr = [
+        [1.00, 0.55, 0.45, 0.40],
+        [0.55, 1.00, 0.40, 0.35],
+        [0.45, 0.40, 1.00, 0.55],
+        [0.40, 0.35, 0.55, 1.00]
+      ];
+
+      // Build covariance from corr and vols
+      const Sigma = ASSETS.map((ai,i)=>ASSETS.map((aj,j)=>Corr[i][j] * vol[ai] * vol[aj]));
+      const L = cholesky(Sigma);
+
+      // Generate returns r = mu + L * z  (z ~ N(0, I))
+      const r = { JNJ: [], KO: [], MSFT: [], JPM: [] };
+      for (let t=0;t<n-1;t++){
+        const z = [randn(), randn(), randn(), randn()];
+        const x = matVec(L, z);
+        for (let i=0;i<ASSETS.length;i++){
+          const a = ASSETS[i];
+          // clamp extreme tails for stability
+          const rt = clamp(mu[a] + x[i], -0.12, 0.12);
+          r[a].push(rt);
+        }
+      }
+
+      // Build prices starting at arbitrary levels
+      const prices = {
+        JNJ: [160],
+        KO: [60],
+        MSFT: [260],
+        JPM: [130]
+      };
+      for (let t=0;t<n-1;t++){
+        for (const a of ASSETS){
+          const prev = prices[a][prices[a].length-1];
+          const next = prev * (1 + r[a][t]);
+          prices[a].push(Math.max(1e-6, next));
+        }
+      }
+
+      state.source = "demo";
+      state.dates = dates;
+      state.prices = prices;
+
+      setStatus(document.getElementById("dataStatus"), `<b>Daten:</b> Demo-Daten aktiv · <span id="dataSpan"></span>`);
+    }
+
+    function cholesky(A){
+      // A: symmetric positive definite
+      const n = A.length;
+      const L = Array.from({length:n}, ()=>Array(n).fill(0));
+      for (let i=0;i<n;i++){
+        for (let j=0;j<=i;j++){
+          let sum = 0;
+          for (let k=0;k<j;k++) sum += L[i][k]*L[j][k];
+          if (i === j){
+            const v = A[i][i] - sum;
+            L[i][j] = Math.sqrt(Math.max(v, 1e-12));
+          } else {
+            L[i][j] = (A[i][j] - sum) / (L[j][j] || 1e-12);
+          }
+        }
+      }
+      return L;
+    }
+
+    function randn(){
+      // Box-Muller
+      let u=0, v=0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    function parseCSVFile(file){
+      return new Promise((resolve, reject)=>{
+        Papa.parse(file, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (res)=> resolve(res.data),
+          error: (err)=> reject(err)
+        });
+      });
+    }
+
+    function normalizeCSVRows(rows){
+      // Expect Date, JNJ, KO, MSFT, JPM
+      const ok = [];
+      for (const row of rows){
+        if (!row) continue;
+        const ds = row.Date ?? row.date ?? row.Datum ?? row.DATUM;
+        const d = parseDateISO(ds);
+        if (!d) continue;
+
+        const rec = { Date: new Date(d) };
+        let valid = true;
+        for (const a of ASSETS){
+          const v = row[a];
+          if (!isFinite(v) || v <= 0){ valid = false; break; }
+          rec[a] = +v;
+        }
+        if (valid) ok.push(rec);
+      }
+      ok.sort((a,b)=>a.Date - b.Date);
+
+      // Deduplicate by date
+      const dedup = [];
+      const seen = new Set();
+      for (const r of ok){
+        const k = toISODate(r.Date);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        dedup.push(r);
+      }
+      return dedup;
+    }
+
+    function applyCSVData(records){
+      if (!records.length){
+        setStatus(document.getElementById("dataStatus"), `<b>Daten:</b> CSV leer/ungültig · Demo-Daten aktiv`, true);
+        loadDemoData();
+        return;
+      }
+
+      // Build arrays
+      const dates = records.map(r=>r.Date);
+      const prices = {};
+      for (const a of ASSETS) prices[a] = records.map(r=>r[a]);
+
+      // Validate minimal length
+      if (dates.length < 260){
+        setStatus(document.getElementById("dataStatus"), `<b>Daten:</b> CSV zu kurz (< 260 Tage) · Demo-Daten aktiv`, true);
+        loadDemoData();
+        return;
+      }
+
+      state.source = "csv";
+      state.dates = dates;
+      state.prices = prices;
+
+      setStatus(document.getElementById("dataStatus"), `<b>Daten:</b> CSV aktiv · <span id="dataSpan"></span>`);
+    }
+
+    // ============================================================
+    // ===================== INTERACTION ==========================
+    // ============================================================
+
+    function initControls(){
+      const toggleAssets = document.getElementById("toggleAssets");
+      const toggleEqual  = document.getElementById("toggleEqual");
+      const rfInput      = document.getElementById("rfInput");
+      const dateFrom     = document.getElementById("dateFrom");
+      const dateTo       = document.getElementById("dateTo");
+      const btnReset     = document.getElementById("btnReset");
+
+      toggleAssets.addEventListener("change", async ()=>{
+        state.view.showAssets = toggleAssets.checked;
+        await recomputeAndRender();
+      });
+
+      toggleEqual.addEventListener("change", async ()=>{
+        state.view.showEqual = toggleEqual.checked;
+        await recomputeAndRender();
+      });
+
+      rfInput.addEventListener("change", async ()=>{
+        const v = parseFloat(rfInput.value);
+        const rf = isFinite(v) ? clamp(v, 0, 20) / 100 : 0;
+        state.rf = rf;
+        // force MC rerun
+        state.mc.points = [];
+        state.mc.highlights = null;
+        await recomputeAndRender();
+      });
+
+      dateFrom.addEventListener("change", async ()=>{
+        const d = parseDateISO(dateFrom.value);
+        state.view.from = d;
+        // force MC rerun due to changed sample
+        state.mc.points = [];
+        state.mc.highlights = null;
+        await recomputeAndRender();
+      });
+
+      dateTo.addEventListener("change", async ()=>{
+        const d = parseDateISO(dateTo.value);
+        state.view.to = d;
+        // force MC rerun due to changed sample
+        state.mc.points = [];
+        state.mc.highlights = null;
+        await recomputeAndRender();
+      });
+
+      btnReset.addEventListener("click", async ()=>{
+        state.view.showAssets = true;
+        state.view.showEqual = true;
+        toggleAssets.checked = true;
+        toggleEqual.checked = true;
+
+        state.rf = 0;
+        rfInput.value = "0";
+
+        state.view.from = null;
+        state.view.to = null;
+
+        // load demo if currently CSV? Reset means return to demo baseline
+        loadDemoData();
+
+        // clear mc
+        state.mc.points = [];
+        state.mc.highlights = null;
+
+        await syncDateInputs();
+        await recomputeAndRender();
+      });
+
+      // File upload
+      const fileInput = document.getElementById("fileInput");
+      fileInput.addEventListener("change", async (e)=>{
+        const f = e.target.files?.[0];
+        if (!f) return;
+        await loadCSV(f);
+      });
+
+      // Drag & drop
+      const uploadBox = document.getElementById("uploadBox");
+      const dropZone = document.getElementById("dropZone");
+
+      ["dragenter","dragover"].forEach(evt=>{
+        uploadBox.addEventListener(evt, (e)=>{
+          e.preventDefault(); e.stopPropagation();
+          uploadBox.classList.add("dragover");
+        });
+      });
+      ["dragleave","drop"].forEach(evt=>{
+        uploadBox.addEventListener(evt, (e)=>{
+          e.preventDefault(); e.stopPropagation();
+          uploadBox.classList.remove("dragover");
+        });
+      });
+
+      uploadBox.addEventListener("drop", async (e)=>{
+        const f = e.dataTransfer?.files?.[0];
+        if (f) await loadCSV(f);
+      });
+
+      dropZone.addEventListener("click", ()=>{
+        fileInput.click();
+      });
+    }
+
+    async function loadCSV(file){
+      try{
+        setStatus(document.getElementById("dataStatus"), `<b>Daten:</b> CSV wird geparst…`, false);
+        const rows = await parseCSVFile(file);
+        const recs = normalizeCSVRows(rows);
+        applyCSVData(recs);
+      } catch(err){
+        setStatus(document.getElementById("dataStatus"), `<b>Daten:</b> CSV-Fehler · Demo-Daten aktiv`, true);
+        loadDemoData();
+      }
+      // clear MC as sample changed
+      state.mc.points = [];
+      state.mc.highlights = null;
+
+      await syncDateInputs();
+      await recomputeAndRender();
+    }
+
+    async function syncDateInputs(){
+      const dateFrom = document.getElementById("dateFrom");
+      const dateTo   = document.getElementById("dateTo");
+
+      const minDate = state.dates[0];
+      const maxDate = state.dates[state.dates.length-1];
+
+      dateFrom.min = toISODate(minDate);
+      dateFrom.max = toISODate(maxDate);
+      dateTo.min   = toISODate(minDate);
+      dateTo.max   = toISODate(maxDate);
+
+      // Enable filter if enough data
+      const enough = state.dates.length >= 520;
+      dateFrom.disabled = !enough;
+      dateTo.disabled   = !enough;
+
+      // Keep current if set; else blank
+      dateFrom.value = state.view.from ? toISODate(state.view.from) : "";
+      dateTo.value   = state.view.to ? toISODate(state.view.to) : "";
+
+      if (!enough){
+        dateFrom.title = "Zeitraumfilter deaktiviert (zu wenige Daten).";
+        dateTo.title   = "Zeitraumfilter deaktiviert (zu wenige Daten).";
+      } else {
+        dateFrom.title = "Startdatum setzen (Charts bleiben sichtbar, werden neu berechnet).";
+        dateTo.title   = "Enddatum setzen (Charts bleiben sichtbar, werden neu berechnet).";
+      }
+    }
+
+    // ============================================================
+    // ===================== INIT ================================
+    // ============================================================
+
+    (async function init(){
+      // Default demo data to ensure immediate rendering
+      loadDemoData();
+      initControls();
+      await syncDateInputs();
+      await recomputeAndRender();
+    })();
+  </script>
+</body>
+</html>
